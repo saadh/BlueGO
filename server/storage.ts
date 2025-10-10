@@ -131,17 +131,57 @@ export class DbStorage implements IStorage {
   }
 
   async createStudent(insertStudent: InsertStudent): Promise<Student> {
-    const [student] = await db.insert(students).values(insertStudent).returning();
+    // Auto-assign classId by finding matching class based on school, grade, and section
+    const matchingClass = await db
+      .select()
+      .from(classes)
+      .where(
+        and(
+          eq(classes.school, insertStudent.school),
+          eq(classes.grade, insertStudent.grade),
+          eq(classes.section, insertStudent.class)
+        )
+      )
+      .limit(1);
+    
+    const studentData = {
+      ...insertStudent,
+      classId: matchingClass.length > 0 ? matchingClass[0].id : null,
+    };
+    
+    const [student] = await db.insert(students).values(studentData).returning();
     return student;
   }
 
   async updateStudent(id: string, updateData: Partial<InsertStudent>): Promise<Student | undefined> {
-    const [student] = await db
+    // If grade or class is being updated, also update classId
+    let dataToUpdate = { ...updateData, updatedAt: new Date() };
+    
+    if (updateData.grade !== undefined || updateData.class !== undefined || updateData.school !== undefined) {
+      const student = await this.getStudentById(id);
+      if (student) {
+        const matchingClass = await db
+          .select()
+          .from(classes)
+          .where(
+            and(
+              eq(classes.school, updateData.school ?? student.school),
+              eq(classes.grade, updateData.grade ?? student.grade),
+              eq(classes.section, updateData.class ?? student.class)
+            )
+          )
+          .limit(1);
+        
+        dataToUpdate.classId = matchingClass.length > 0 ? matchingClass[0].id : null;
+      }
+    }
+    
+    const [updatedStudent] = await db
       .update(students)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set(dataToUpdate)
       .where(eq(students.id, id))
       .returning();
-    return student;
+    return updatedStudent;
   }
 
   async deleteStudent(id: string): Promise<boolean> {
@@ -390,6 +430,44 @@ export class DbStorage implements IStorage {
       .delete(teacherClasses)
       .where(eq(teacherClasses.teacherId, teacherId));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Fix existing students by assigning correct classId based on school, grade, and section
+  async fixStudentClassIds(): Promise<{ updated: number; failed: number }> {
+    const allStudents = await db.select().from(students);
+    let updated = 0;
+    let failed = 0;
+    
+    for (const student of allStudents) {
+      const matchingClass = await db
+        .select()
+        .from(classes)
+        .where(
+          and(
+            eq(classes.school, student.school),
+            eq(classes.grade, student.grade),
+            eq(classes.section, student.class)
+          )
+        )
+        .limit(1);
+      
+      if (matchingClass.length > 0 && student.classId !== matchingClass[0].id) {
+        await db
+          .update(students)
+          .set({ classId: matchingClass[0].id, updatedAt: new Date() })
+          .where(eq(students.id, student.id));
+        updated++;
+      } else if (matchingClass.length === 0 && student.classId !== null) {
+        // Class doesn't exist, set to null
+        await db
+          .update(students)
+          .set({ classId: null, updatedAt: new Date() })
+          .where(eq(students.id, student.id));
+        failed++;
+      }
+    }
+    
+    return { updated, failed };
   }
 }
 

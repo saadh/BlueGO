@@ -484,6 +484,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fix student classIds - admin utility endpoint
+  app.post("/api/admin/fix-student-classes", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const result = await storage.fixStudentClassIds();
+      res.json({ 
+        message: `Updated ${result.updated} students, ${result.failed} students have no matching class`,
+        ...result 
+      });
+    } catch (error) {
+      console.error('Error fixing student classIds:', error);
+      res.status(500).json({ message: "Failed to fix student classIds" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
