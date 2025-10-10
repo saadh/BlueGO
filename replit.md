@@ -6,6 +6,24 @@ BlueGO is a comprehensive school dismissal management system that streamlines st
 
 ## Recent Changes (October 10, 2025)
 
+**Teacher-Class Assignment & Classroom Display Filtering (Complete)**:
+- Implemented many-to-many teacher-class relationship system
+  - Created teacher_classes junction table with unique constraint (teacher_id, class_id)
+  - Added cascade delete to maintain data integrity
+  - Built storage methods: assignTeacherToClass, removeTeacherFromClass, getTeacherClasses
+- Admin UI for teacher-class assignments
+  - AssignTeacherClassesDialog component for assigning/removing class assignments
+  - "Assigned Classes" column in admin users table displaying badges for each assigned class
+  - API endpoints: GET/POST/DELETE /api/admin/teacher-classes with conflict handling (409)
+- Classroom display filtering by teacher's assigned classes
+  - Backend: getDismissalsForTeacherClasses joins teacher_classes → classes → students → dismissals
+  - API endpoint: GET /api/teacher/dismissals (teacher-role protected)
+  - Frontend: React Query with 5-second polling, dynamic grade/class filters from data
+  - Security: Teachers only see dismissals for students in their assigned classes
+- Split landing pages: parents register at `/`, school staff login at `/school`
+- Added logout button to classroom display with auth flow integration
+- End-to-end tested: teacher assignments → classroom filtering → real-time dismissal display
+
 **Admin Portal - Full CRUD Functionality (Complete)**:
 - Restored and integrated all previously built dialog components for complete CRUD operations
 - Implemented full create/update/delete functionality for users, gates, and classes:
