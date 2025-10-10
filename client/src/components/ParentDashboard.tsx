@@ -6,16 +6,10 @@ import { Plus, Mail, Phone, CreditCard, Link as LinkIcon } from "lucide-react";
 import StudentCard from "./StudentCard";
 import AddStudentDialog from "./AddStudentDialog";
 import LinkParentNFCDialog from "./LinkParentNFCDialog";
-import { User } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
+import { User, Student, InsertStudent } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-// todo: remove mock functionality
-const mockStudents = [
-  { id: "1", name: "Emma Johnson", grade: "5", class: "A", gender: "female" as const, nfcLinked: true, school: "Riverside Elementary" },
-  { id: "2", name: "Noah Johnson", grade: "2", class: "B", gender: "male" as const, nfcLinked: false, school: "Riverside Elementary" },
-];
 
 interface ParentDashboardProps {
   user: User;
@@ -23,9 +17,13 @@ interface ParentDashboardProps {
 
 export default function ParentDashboard({ user }: ParentDashboardProps) {
   const { toast } = useToast();
-  const [students, setStudents] = useState(mockStudents);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLinkNFCDialogOpen, setIsLinkNFCDialogOpen] = useState(false);
+
+  // Fetch students from database
+  const { data: students = [], isLoading } = useQuery<Student[]>({
+    queryKey: ["/api/students"],
+  });
 
   const updateNFCMutation = useMutation({
     mutationFn: async (nfcCardId: string) => {
@@ -34,6 +32,7 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
     },
     onSuccess: (updatedUser: User) => {
       queryClient.setQueryData(["/api/user"], updatedUser);
+      queryClient.invalidateQueries({ queryKey: ["/api/students"] });
       toast({
         title: "NFC Card Linked",
         description: "Your NFC card has been successfully linked to your account and all your children.",
@@ -49,10 +48,30 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
     },
   });
 
+  const addStudentMutation = useMutation({
+    mutationFn: async (student: Omit<InsertStudent, 'parentId'>) => {
+      const res = await apiRequest("POST", "/api/students", student);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/students"] });
+      toast({
+        title: "Student Added",
+        description: "Your child has been successfully added to your account.",
+      });
+      setIsAddDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add student",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddStudent = (student: any) => {
-    setStudents([...students, { ...student, id: Date.now().toString() }]);
-    setIsAddDialogOpen(false);
-    console.log('Student added:', student);
+    addStudentMutation.mutate(student);
   };
 
   const handleLinkNFCCard = (nfcCardId: string) => {
@@ -136,20 +155,31 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {students.map((student) => (
-          <StudentCard key={student.id} {...student} />
-        ))}
-      </div>
-
-      {students.length === 0 && (
+      {isLoading ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading students...</p>
+        </div>
+      ) : students.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {students.map((student) => (
+            <StudentCard 
+              key={student.id} 
+              name={student.name}
+              grade={student.grade}
+              class={student.class}
+              gender={student.gender}
+              nfcLinked={!!student.nfcCardId}
+            />
+          ))}
+        </div>
+      ) : (
         <Card>
           <CardHeader>
             <CardTitle>No Children Added</CardTitle>
             <CardDescription>Get started by adding your first child's profile</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-first-child">
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Child
             </Button>
