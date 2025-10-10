@@ -121,6 +121,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Teacher routes - classroom display dismissals
   
+  // Get teacher's assigned classes
+  app.get("/api/teacher/classes", isAuthenticated, hasRole("teacher"), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const classes = await storage.getTeacherClassAssignments(req.user.id);
+      res.json(classes);
+    } catch (error) {
+      console.error('Error fetching teacher classes:', error);
+      res.status(500).json({ message: "Failed to fetch teacher classes" });
+    }
+  });
+  
   // Get all dismissals for teacher's assigned classes
   app.get("/api/teacher/dismissals", isAuthenticated, hasRole("teacher"), async (req, res) => {
     try {

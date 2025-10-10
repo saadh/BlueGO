@@ -21,17 +21,24 @@ interface DismissalCall {
   gate: string;
 }
 
+interface TeacherClass {
+  id: string;
+  school: string;
+  grade: string;
+  section: string;
+  teacherId: string | null;
+  roomNumber: string | null;
+}
+
 export default function ClassroomDisplay() {
-  // Fetch dismissals from API
-  const { data: dismissalsData = [], isLoading } = useQuery({
+  // Fetch teacher's assigned classes (uses default fetcher)
+  const { data: assignedClasses = [] } = useQuery<TeacherClass[]>({
+    queryKey: ["/api/teacher/classes"],
+  });
+
+  // Fetch dismissals from API (uses default fetcher with polling)
+  const { data: dismissalsData = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teacher/dismissals"],
-    queryFn: async () => {
-      const res = await fetch("/api/teacher/dismissals", {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Failed to fetch dismissals: ${res.statusText}`);
-      return res.json();
-    },
     refetchInterval: 5000, // Poll every 5 seconds for new dismissals
   });
 
@@ -48,9 +55,9 @@ export default function ClassroomDisplay() {
     gate: d.gateName || "Unknown",
   }));
 
-  // Dynamically get unique grades and classes from the fetched data
-  const uniqueGrades = Array.from(new Set(calls.map(c => c.grade))).sort();
-  const uniqueClasses = Array.from(new Set(calls.map(c => c.class))).sort();
+  // Get unique grades and classes from teacher's assigned classes
+  const uniqueGrades = Array.from(new Set(assignedClasses.map(c => c.grade))).sort();
+  const uniqueClasses = Array.from(new Set(assignedClasses.map(c => c.section))).sort();
   
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
