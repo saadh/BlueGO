@@ -9,15 +9,19 @@ import ParentPage from "@/pages/parent";
 import SecurityPage from "@/pages/security";
 import ClassroomPage from "@/pages/classroom";
 import AdminPage from "@/pages/admin";
+import AuthPage from "@/pages/auth";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={HomePage} />
-      <Route path="/parent" component={ParentPage} />
-      <Route path="/security" component={SecurityPage} />
-      <Route path="/classroom" component={ClassroomPage} />
-      <Route path="/admin" component={AdminPage} />
+      <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/parent" component={ParentPage} allowedRoles={["parent"]} />
+      <ProtectedRoute path="/security" component={SecurityPage} allowedRoles={["security"]} />
+      <ProtectedRoute path="/classroom" component={ClassroomPage} allowedRoles={["teacher"]} />
+      <ProtectedRoute path="/admin" component={AdminPage} allowedRoles={["admin"]} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -26,10 +30,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
