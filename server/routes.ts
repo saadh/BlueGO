@@ -4,6 +4,12 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hasRole, hashPassword } from "./auth";
 import { insertStudentSchema, insertClassSchema, insertGateSchema, insertUserSchema } from "@shared/schema";
 
+// Helper function to normalize NFC card ID format
+function normalizeNFCCardId(nfcCardId: string): string {
+  // Remove colons and convert to uppercase for consistent storage/lookup
+  return nfcCardId.replace(/:/g, '').toUpperCase();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication - creates /api/register, /api/login, /api/logout, /api/user
   setupAuth(app);
@@ -26,7 +32,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const updatedUser = await storage.updateUserNFCCard(req.user.id, nfcCardId);
+      // Normalize NFC card ID (remove colons, uppercase) before storing
+      const normalizedNfcCardId = normalizeNFCCardId(nfcCardId);
+
+      const updatedUser = await storage.updateUserNFCCard(req.user.id, normalizedNfcCardId);
       
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
@@ -35,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Link NFC card to all existing children
       const children = await storage.getStudentsByParentId(req.user.id);
       for (const child of children) {
-        await storage.updateStudent(child.id, { nfcCardId });
+        await storage.updateStudent(child.id, { nfcCardId: normalizedNfcCardId });
       }
 
       const { password: _, ...userWithoutPassword } = updatedUser;
@@ -70,8 +79,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      // Normalize NFC card ID (remove colons, uppercase) before lookup
+      const normalizedNfcCardId = normalizeNFCCardId(nfcCardId);
+      
       // Look up parent by NFC card
-      const parent = await storage.getUserByNFCCard(nfcCardId);
+      const parent = await storage.getUserByNFCCard(normalizedNfcCardId);
       if (!parent) {
         return res.status(404).json({ message: "No parent found with this NFC card" });
       }
