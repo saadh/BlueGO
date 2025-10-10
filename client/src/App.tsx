@@ -8,6 +8,7 @@ import HomePage from "@/pages/home";
 import ParentPage from "@/pages/parent";
 import SecurityPage from "@/pages/security";
 import ClassroomPage from "@/pages/classroom";
+import AdminPage from "@/pages/admin";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/parent" component={ParentPage} />
       <Route path="/security" component={SecurityPage} />
       <Route path="/classroom" component={ClassroomPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );

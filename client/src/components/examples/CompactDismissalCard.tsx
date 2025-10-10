@@ -9,6 +9,7 @@ export default function CompactDismissalCardExample() {
         class="A"
         parentName="Sarah Johnson"
         time="2:45 PM"
+        gate="Gate A"
         isNew={true}
       />
       <CompactDismissalCard
@@ -17,6 +18,7 @@ export default function CompactDismissalCardExample() {
         class="B"
         parentName="Michael Smith"
         time="2:43 PM"
+        gate="Gate B"
       />
       <CompactDismissalCard
         studentName="Olivia Brown"
@@ -24,6 +26,7 @@ export default function CompactDismissalCardExample() {
         class="C"
         parentName="Jennifer Brown"
         time="2:40 PM"
+        gate="Gate C"
         isCompleted={true}
       />
     </div>

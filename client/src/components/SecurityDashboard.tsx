@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, MapPin } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import NFCScanButton from "./NFCScanButton";
 import DismissalCallCard from "./DismissalCallCard";
 
@@ -30,11 +37,15 @@ const mockDismissals = [
 export default function SecurityDashboard() {
   const [dismissals, setDismissals] = useState(mockDismissals);
   const [scanResult, setScanResult] = useState<string | null>(null);
+  const [selectedGate, setSelectedGate] = useState<string>("");
 
   const handleNFCScan = (nfcId: string) => {
+    if (!selectedGate) {
+      console.log('Please select a gate first');
+      return;
+    }
     setScanResult(nfcId);
-    console.log('NFC scanned, initiating dismissal for:', nfcId);
-    // todo: remove mock functionality - In real app, would trigger dismissal call
+    console.log('NFC scanned at gate:', selectedGate, 'NFC ID:', nfcId);
   };
 
   const handleComplete = (id: string) => {
@@ -42,6 +53,11 @@ export default function SecurityDashboard() {
       d.id === id ? { ...d, status: "completed" as const } : d
     ));
     console.log('Dismissal completed:', id);
+  };
+
+  const handleGateChange = (gate: string) => {
+    setSelectedGate(gate);
+    console.log('Gate selected:', gate);
   };
 
   return (
@@ -53,14 +69,43 @@ export default function SecurityDashboard() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Select Your Gate</CardTitle>
+          <CardDescription>Choose the gate where you are stationed</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select value={selectedGate} onValueChange={handleGateChange}>
+            <SelectTrigger className="w-full" data-testid="select-gate">
+              <SelectValue placeholder="Select a gate">
+                {selectedGate && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    {selectedGate}
+                  </div>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Gate A">Gate A - Main Entrance</SelectItem>
+              <SelectItem value="Gate B">Gate B - East Side</SelectItem>
+              <SelectItem value="Gate C">Gate C - West Side</SelectItem>
+              <SelectItem value="Gate D">Gate D - South Parking</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Scan Parent NFC Card</CardTitle>
-          <CardDescription>Tap the button and hold the NFC card near the device</CardDescription>
+          <CardDescription>
+            {selectedGate ? `Tap to scan NFC card at ${selectedGate}` : "Select a gate first to begin scanning"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          <NFCScanButton onScan={handleNFCScan} />
+          <NFCScanButton onScan={handleNFCScan} className={!selectedGate ? "opacity-50" : ""} />
           {scanResult && (
             <p className="text-sm text-muted-foreground" data-testid="text-scan-result">
-              Last scanned: {scanResult}
+              Last scanned: {scanResult} at {selectedGate}
             </p>
           )}
         </CardContent>

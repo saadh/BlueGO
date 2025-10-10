@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Monitor } from "lucide-react";
+import { User, Shield, Monitor, Settings } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -25,7 +25,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
           <Card className="hover-elevate">
             <CardHeader>
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
@@ -78,6 +78,25 @@ export default function HomePage() {
               <Link href="/classroom">
                 <Button variant="secondary" className="w-full" data-testid="link-classroom">
                   View Classroom Display
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="hover-elevate">
+            <CardHeader>
+              <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-2">
+                <Settings className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <CardTitle>School Administration</CardTitle>
+              <CardDescription>
+                Manage users, gates, classes, and all system settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/admin">
+                <Button variant="outline" className="w-full" data-testid="link-admin">
+                  Access Admin Panel
                 </Button>
               </Link>
             </CardContent>
