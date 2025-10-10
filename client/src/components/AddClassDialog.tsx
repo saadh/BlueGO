@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/button";
 const classSchema = z.object({
   grade: z.string().min(1, "Grade is required"),
   class: z.string().min(1, "Class is required"),
-  teacher: z.string().min(1, "Teacher is required"),
+  teacher: z.string().optional(),
 });
 
 interface Teacher {

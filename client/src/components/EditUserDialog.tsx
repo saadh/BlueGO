@@ -26,12 +26,12 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { type UserRole } from "./RoleBadge";
+import type { UserRole } from "@shared/schema";
 
 const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email is required"),
-  role: z.enum(["parent", "security", "teacher", "floor_supervisor", "section_manager", "school_admin"] as const),
+  role: z.enum(["parent", "security", "teacher", "admin"] as const),
 });
 
 interface EditUserDialogProps {
@@ -120,9 +120,7 @@ export default function EditUserDialog({ open, onOpenChange, onSubmit, user }: E
                       <SelectItem value="parent">Parent</SelectItem>
                       <SelectItem value="security">Security Staff</SelectItem>
                       <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="floor_supervisor">Floor Supervisor</SelectItem>
-                      <SelectItem value="section_manager">Section Manager</SelectItem>
-                      <SelectItem value="school_admin">School Admin</SelectItem>
+                      <SelectItem value="admin">School Administrator</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -25,12 +25,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import type { UserRole } from "./RoleBadge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
+import type { UserRole } from "@shared/schema";
 
 const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  role: z.enum(["parent", "security", "teacher", "section_manager", "floor_supervisor", "school_admin"]),
+  role: z.enum(["parent", "security", "teacher", "admin"]),
 });
 
 interface AddUserDialogProps {
@@ -107,15 +109,21 @@ export default function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserD
                       <SelectItem value="parent">Parent</SelectItem>
                       <SelectItem value="security">Security Staff</SelectItem>
                       <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="floor_supervisor">Floor Supervisor</SelectItem>
-                      <SelectItem value="section_manager">Section Manager</SelectItem>
-                      <SelectItem value="school_admin">School Admin</SelectItem>
+                      <SelectItem value="admin">School Administrator</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                New users will be created with the default password: <strong>changeme123</strong>
+                <br />
+                Please inform the user to change their password after first login.
+              </AlertDescription>
+            </Alert>
             <div className="flex gap-2 justify-end pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">
                 Cancel
