@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 
 const studentSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  studentId: z.string().min(1, "Student ID is required"),
   school: z.string().min(1, "School is required"),
   grade: z.string().min(1, "Grade is required"),
   class: z.string().min(1, "Class is required"),
@@ -45,6 +46,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
     resolver: zodResolver(studentSchema),
     defaultValues: {
       name: "",
+      studentId: "",
       school: "",
       grade: "",
       class: "",
@@ -76,6 +78,19 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input placeholder="Emma Johnson" {...field} data-testid="input-name" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="studentId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unique Identifier</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Government ID, Passport, or School ID" {...field} data-testid="input-student-id" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
