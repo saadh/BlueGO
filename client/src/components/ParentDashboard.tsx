@@ -7,6 +7,9 @@ import StudentCard from "./StudentCard";
 import AddStudentDialog from "./AddStudentDialog";
 import LinkParentNFCDialog from "./LinkParentNFCDialog";
 import { User } from "@shared/schema";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // todo: remove mock functionality
 const mockStudents = [
@@ -19,9 +22,32 @@ interface ParentDashboardProps {
 }
 
 export default function ParentDashboard({ user }: ParentDashboardProps) {
+  const { toast } = useToast();
   const [students, setStudents] = useState(mockStudents);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLinkNFCDialogOpen, setIsLinkNFCDialogOpen] = useState(false);
+
+  const updateNFCMutation = useMutation({
+    mutationFn: async (nfcCardId: string) => {
+      const res = await apiRequest("POST", "/api/parent/nfc-card", { nfcCardId });
+      return await res.json();
+    },
+    onSuccess: (updatedUser: User) => {
+      queryClient.setQueryData(["/api/user"], updatedUser);
+      toast({
+        title: "NFC Card Linked",
+        description: "Your NFC card has been successfully linked to your account and all your children.",
+      });
+      setIsLinkNFCDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to link NFC card",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleAddStudent = (student: any) => {
     setStudents([...students, { ...student, id: Date.now().toString() }]);
@@ -30,8 +56,7 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
   };
 
   const handleLinkNFCCard = (nfcCardId: string) => {
-    // TODO: API call to update parent NFC card and link to all children
-    console.log('NFC card linked:', nfcCardId);
+    updateNFCMutation.mutate(nfcCardId);
   };
 
   return (

@@ -17,6 +17,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Admin only route" });
   });
 
+  // Update parent NFC card - parent only route
+  app.post("/api/parent/nfc-card", isAuthenticated, hasRole("parent"), async (req, res) => {
+    try {
+      const { nfcCardId } = req.body;
+      
+      if (!nfcCardId || typeof nfcCardId !== 'string') {
+        return res.status(400).json({ message: "NFC card ID is required" });
+      }
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const updatedUser = await storage.updateUserNFCCard(req.user.id, nfcCardId);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // TODO: Link NFC card to all children
+      // This will be implemented when we have the students/children schema
+
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error('Error updating NFC card:', error);
+      res.status(500).json({ message: "Failed to update NFC card" });
+    }
+  });
+
   // Add more application routes here
   // prefix all routes with /api
 

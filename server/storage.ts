@@ -12,6 +12,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmailOrPhone(emailOrPhone: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserNFCCard(userId: string, nfcCardId: string): Promise<User | undefined>;
   sessionStore: session.Store;
 }
 
@@ -50,6 +51,20 @@ export class MemStorage implements IStorage {
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUserNFCCard(userId: string, nfcCardId: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) {
+      return undefined;
+    }
+    const updatedUser: User = {
+      ...user,
+      nfcCardId,
+      updatedAt: new Date(),
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 }
 
