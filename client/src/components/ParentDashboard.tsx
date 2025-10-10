@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Mail, Phone } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Mail, Phone, CreditCard, Link as LinkIcon } from "lucide-react";
 import StudentCard from "./StudentCard";
 import AddStudentDialog from "./AddStudentDialog";
+import LinkParentNFCDialog from "./LinkParentNFCDialog";
 
 // todo: remove mock functionality
 const mockStudents = [
@@ -20,6 +22,8 @@ const mockParentInfo = {
 export default function ParentDashboard() {
   const [students, setStudents] = useState(mockStudents);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLinkNFCDialogOpen, setIsLinkNFCDialogOpen] = useState(false);
+  const [parentNFCCard, setParentNFCCard] = useState<string>(""); // todo: load from database
 
   const handleAddStudent = (student: any) => {
     setStudents([...students, { ...student, id: Date.now().toString() }]);
@@ -27,12 +31,38 @@ export default function ParentDashboard() {
     console.log('Student added:', student);
   };
 
+  const handleLinkNFCCard = (nfcCardId: string) => {
+    setParentNFCCard(nfcCardId);
+    console.log('NFC card linked:', nfcCardId);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Parent Information</CardTitle>
-          <CardDescription>Your registered contact details</CardDescription>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle>Parent Information</CardTitle>
+              <CardDescription>Your registered contact details and NFC card</CardDescription>
+            </div>
+            <Button 
+              variant={parentNFCCard ? "outline" : "default"}
+              onClick={() => setIsLinkNFCDialogOpen(true)}
+              data-testid="button-link-nfc"
+            >
+              {parentNFCCard ? (
+                <>
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Manage NFC Card
+                </>
+              ) : (
+                <>
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  Link NFC Card
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -48,6 +78,20 @@ export default function ParentDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Phone</p>
                 <p className="font-medium" data-testid="text-parent-phone">{mockParentInfo.phone}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">NFC Card</p>
+                {parentNFCCard ? (
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono font-medium" data-testid="text-parent-nfc-card">{parentNFCCard}</p>
+                    <Badge variant="default" className="text-xs">Linked</Badge>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground" data-testid="text-no-nfc-card">Not linked - Click "Link NFC Card" to get started</p>
+                )}
               </div>
             </div>
           </div>
@@ -90,6 +134,12 @@ export default function ParentDashboard() {
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
         onSubmit={handleAddStudent}
+      />
+      <LinkParentNFCDialog 
+        open={isLinkNFCDialogOpen} 
+        onOpenChange={setIsLinkNFCDialogOpen}
+        onSubmit={handleLinkNFCCard}
+        currentNFCCard={parentNFCCard}
       />
     </div>
   );
