@@ -184,7 +184,7 @@ export default function SchoolAdminDashboard() {
     mutationFn: async (data: any) => {
       await apiRequest("POST", "/api/admin/classes", {
         school: "Riverside Elementary", // Default school
-        grade: parseInt(data.grade),
+        grade: data.grade,
         section: data.class,
         teacherId: data.teacher || null,
         roomNumber: null,
@@ -237,7 +237,7 @@ export default function SchoolAdminDashboard() {
   const editClassMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       await apiRequest("PATCH", `/api/admin/classes/${id}`, {
-        grade: parseInt(data.grade),
+        grade: data.grade,
         section: data.class,
         teacherId: data.teacher || null,
       });

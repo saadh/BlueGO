@@ -1,7 +1,8 @@
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import RoleBadge, { type UserRole } from "./RoleBadge";
+import RoleBadge from "./RoleBadge";
+import type { UserRole } from "@shared/schema";
 import {
   DropdownMenu,
   DropdownMenuContent,
