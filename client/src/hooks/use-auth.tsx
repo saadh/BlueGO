@@ -85,9 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      // Redirect based on user role
+      // Redirect based on user role (redirect first to avoid 404 flash)
       const redirectPath = user?.role === 'parent' ? '/' : '/school';
-      queryClient.setQueryData(["/api/user"], null);
       window.location.href = redirectPath;
     },
     onError: (error: Error) => {
