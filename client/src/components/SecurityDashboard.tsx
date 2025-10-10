@@ -52,7 +52,7 @@ export default function SecurityDashboard() {
   const scanMutation = useMutation({
     mutationFn: async (data: { nfcCardId: string; gateId: string }) => {
       const response = await apiRequest("POST", "/api/security/scan", data);
-      return response;
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({
