@@ -4,6 +4,20 @@
 
 BlueGO is a comprehensive school dismissal management system that streamlines student pickup through NFC technology and real-time tracking. The platform serves multiple user roles including parents, security personnel, teachers, section managers, floor supervisors, and school administrators. It provides role-specific dashboards for managing students, tracking dismissals, and coordinating safe pickup processes.
 
+## Recent Changes (October 10, 2025)
+
+**Parent Profile & NFC Card Integration**:
+- Integrated authenticated user data into parent dashboard
+- Parent profile now displays real email/phone from user account instead of mock data
+- Implemented parent NFC card linking functionality
+  - Created API endpoint: POST /api/parent/nfc-card (protected, parent-role only)
+  - Added updateUserNFCCard method to storage interface
+  - Built frontend mutation with React Query for NFC card updates
+  - Includes success/error toast notifications
+  - Dialog UI for manual NFC card entry and management
+- NFC card automatically stores to parent account (ready for future auto-linking to children)
+- End-to-end tested: registration → authentication → profile display → NFC linking → UI updates
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -97,7 +111,9 @@ Preferred communication style: Simple, everyday language.
 - First Name
 - Last Name
 - Role (parent, teacher, security, admin)
+- NFC Card ID (optional, stores parent's NFC card identifier)
 - Created At timestamp
+- Updated At timestamp
 
 **Planned Entities** (evident from UI components):
 - Students (name, ID, school, grade, class, gender, NFC linkage)
