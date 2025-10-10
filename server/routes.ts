@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hasRole } from "./auth";
-import { insertStudentSchema } from "@shared/schema";
+import { insertStudentSchema, insertClassSchema, insertGateSchema, insertUserSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication - creates /api/register, /api/login, /api/logout, /api/user
@@ -164,8 +164,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add more application routes here
-  // prefix all routes with /api
+  // Admin routes - require admin role
+  
+  // User Management
+  app.get("/api/admin/users", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const users = await storage.getUsersByRole("parent");
+      const teachers = await storage.getUsersByRole("teacher");
+      const security = await storage.getUsersByRole("security");
+      const admins = await storage.getUsersByRole("admin");
+      
+      const allUsers = [...users, ...teachers, ...security, ...admins].map(({ password: _, ...user }) => user);
+      res.json(allUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/admin/users", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const validation = insertUserSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const user = await storage.createUser(validation.data);
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteUser(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Class Management
+  app.get("/api/admin/classes", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const classes = await storage.getAllClasses();
+      res.json(classes);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      res.status(500).json({ message: "Failed to fetch classes" });
+    }
+  });
+
+  app.post("/api/admin/classes", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const validation = insertClassSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const classData = await storage.createClass(validation.data);
+      res.status(201).json(classData);
+    } catch (error) {
+      console.error('Error creating class:', error);
+      res.status(500).json({ message: "Failed to create class" });
+    }
+  });
+
+  app.patch("/api/admin/classes/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validation = insertClassSchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const updatedClass = await storage.updateClass(id, validation.data);
+      res.json(updatedClass);
+    } catch (error) {
+      console.error('Error updating class:', error);
+      res.status(500).json({ message: "Failed to update class" });
+    }
+  });
+
+  app.delete("/api/admin/classes/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteClass(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting class:', error);
+      res.status(500).json({ message: "Failed to delete class" });
+    }
+  });
+
+  // Gate Management
+  app.get("/api/admin/gates", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const gates = await storage.getAllGates();
+      res.json(gates);
+    } catch (error) {
+      console.error('Error fetching gates:', error);
+      res.status(500).json({ message: "Failed to fetch gates" });
+    }
+  });
+
+  app.post("/api/admin/gates", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const validation = insertGateSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const gate = await storage.createGate(validation.data);
+      res.status(201).json(gate);
+    } catch (error) {
+      console.error('Error creating gate:', error);
+      res.status(500).json({ message: "Failed to create gate" });
+    }
+  });
+
+  app.patch("/api/admin/gates/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validation = insertGateSchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const updatedGate = await storage.updateGate(id, validation.data);
+      res.json(updatedGate);
+    } catch (error) {
+      console.error('Error updating gate:', error);
+      res.status(500).json({ message: "Failed to update gate" });
+    }
+  });
+
+  app.delete("/api/admin/gates/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteGate(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting gate:', error);
+      res.status(500).json({ message: "Failed to delete gate" });
+    }
+  });
 
   const httpServer = createServer(app);
 

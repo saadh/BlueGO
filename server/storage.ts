@@ -20,6 +20,7 @@ export interface IStorage {
   getUsersByRole(role: UserRole): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUserNFCCard(userId: string, nfcCardId: string): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
   
   // Student operations
   getStudentsByParentId(parentId: string): Promise<Student[]>;
@@ -97,6 +98,11 @@ export class DbStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   // Student operations
