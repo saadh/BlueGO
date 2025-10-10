@@ -67,12 +67,8 @@ export default function SecurityDashboard() {
         <p className="text-muted-foreground mt-1">Scan parent NFC cards and manage student pickups</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Your Gate</CardTitle>
-          <CardDescription>Choose the gate where you are stationed</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="flex items-center flex-wrap gap-3 p-4 bg-card rounded-lg border">
+        <div className="flex-1 min-w-[200px]">
           <Select value={selectedGate} onValueChange={handleGateChange}>
             <SelectTrigger className="w-full" data-testid="select-gate">
               <SelectValue placeholder="Select a gate">
@@ -91,25 +87,14 @@ export default function SecurityDashboard() {
               <SelectItem value="Gate D">Gate D - South Parking</SelectItem>
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Scan Parent NFC Card</CardTitle>
-          <CardDescription>
-            {selectedGate ? `Tap to scan NFC card at ${selectedGate}` : "Select a gate first to begin scanning"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          <NFCScanButton onScan={handleNFCScan} className={!selectedGate ? "opacity-50" : ""} />
-          {scanResult && (
-            <p className="text-sm text-muted-foreground" data-testid="text-scan-result">
-              Last scanned: {scanResult} at {selectedGate}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        <NFCScanButton onScan={handleNFCScan} gateSelected={!!selectedGate} />
+        {scanResult && (
+          <p className="text-xs text-muted-foreground" data-testid="text-scan-result">
+            Last: {scanResult}
+          </p>
+        )}
+      </div>
 
       <div>
         <h2 className="text-2xl font-bold mb-4">Active Dismissals</h2>
