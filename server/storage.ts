@@ -175,6 +175,29 @@ export class DbStorage implements IStorage {
     return await db.select().from(classes);
   }
 
+  // Get all classes with their assigned teachers from junction table
+  async getAllClassesWithTeachers(): Promise<Array<Class & { teachers: User[] }>> {
+    const allClasses = await db.select().from(classes);
+    
+    const classesWithTeachers = await Promise.all(
+      allClasses.map(async (cls) => {
+        // Get all teachers assigned to this class via junction table
+        const teacherAssignments = await db
+          .select({ user: users })
+          .from(teacherClasses)
+          .innerJoin(users, eq(teacherClasses.teacherId, users.id))
+          .where(eq(teacherClasses.classId, cls.id));
+        
+        return {
+          ...cls,
+          teachers: teacherAssignments.map(t => t.user),
+        };
+      })
+    );
+    
+    return classesWithTeachers;
+  }
+
   async getClassById(id: string): Promise<Class | undefined> {
     const [classData] = await db.select().from(classes).where(eq(classes.id, id));
     return classData;

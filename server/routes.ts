@@ -322,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Class Management
   app.get("/api/admin/classes", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
-      const classes = await storage.getAllClasses();
+      const classes = await storage.getAllClassesWithTeachers();
       res.json(classes);
     } catch (error) {
       console.error('Error fetching classes:', error);

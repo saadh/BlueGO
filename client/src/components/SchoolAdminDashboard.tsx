@@ -50,7 +50,11 @@ export default function SchoolAdminDashboard() {
   });
 
   // Fetch classes
-  const { data: classes = [], isLoading: classesLoading } = useQuery<Class[]>({
+  interface ClassWithTeachers extends Class {
+    teachers?: Array<{ id: string; firstName: string; lastName: string }>;
+  }
+
+  const { data: classes = [], isLoading: classesLoading } = useQuery<ClassWithTeachers[]>({
     queryKey: ["/api/admin/classes"],
   });
 
@@ -564,7 +568,20 @@ export default function SchoolAdminDashboard() {
                         <TableCell className="font-medium">{cls.school}</TableCell>
                         <TableCell>Grade {cls.grade}</TableCell>
                         <TableCell>Section {cls.section}</TableCell>
-                        <TableCell>{getTeacherName(cls.teacherId)}</TableCell>
+                        <TableCell>
+                          {cls.teachers && cls.teachers.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {cls.teachers.map((teacher: any, index: number) => (
+                                <span key={teacher.id} className="text-sm">
+                                  {teacher.firstName} {teacher.lastName}
+                                  {index < (cls.teachers?.length ?? 0) - 1 ? ',' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">Unassigned</span>
+                          )}
+                        </TableCell>
                         <TableCell>{cls.roomNumber || '-'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
