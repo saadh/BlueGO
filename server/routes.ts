@@ -119,7 +119,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const updatedStudent = await storage.updateStudent(id, req.body);
+      // Validate and whitelist allowed fields (prevent parentId reassignment)
+      const updateSchema = insertStudentSchema.partial().omit({ parentId: true });
+      const validation = updateSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const updatedStudent = await storage.updateStudent(id, validation.data);
       res.json(updatedStudent);
     } catch (error) {
       console.error('Error updating student:', error);
