@@ -1,6 +1,9 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import type { Class } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +57,50 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
     },
   });
 
+  // Fetch all classes from database
+  const { data: classes = [] } = useQuery<Class[]>({
+    queryKey: ["/api/classes"],
+  });
+
+  // Watch form values for dynamic filtering
+  const selectedSchool = form.watch("school");
+  const selectedGrade = form.watch("grade");
+
+  // Extract unique values for dropdowns
+  const schools = Array.from(new Set(classes.map(c => c.school))).sort();
+  
+  // Filter grades based on selected school
+  const grades = Array.from(new Set(
+    classes
+      .filter(c => !selectedSchool || c.school === selectedSchool)
+      .map(c => c.grade)
+  )).sort();
+  
+  // Get unique classes (sections) for selected school and grade
+  const availableClasses = classes
+    .filter(c => 
+      (!selectedSchool || c.school === selectedSchool) &&
+      (!selectedGrade || c.grade === selectedGrade)
+    )
+    .map(c => c.section)
+    .filter((value, index, self) => self.indexOf(value) === index)
+    .sort();
+
+  // Reset grade and class when school changes
+  useEffect(() => {
+    if (selectedSchool) {
+      form.setValue("grade", "");
+      form.setValue("class", "");
+    }
+  }, [selectedSchool]);
+
+  // Reset class when grade changes
+  useEffect(() => {
+    if (selectedGrade) {
+      form.setValue("class", "");
+    }
+  }, [selectedGrade]);
+
   const handleSubmit = (data: z.infer<typeof studentSchema>) => {
     onSubmit(data);
     form.reset();
@@ -102,17 +149,24 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>School</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-school">
                         <SelectValue placeholder="Select school" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="riverside">Riverside Elementary</SelectItem>
-                      <SelectItem value="oakwood">Oakwood Academy</SelectItem>
-                      <SelectItem value="maplewood">Maplewood School</SelectItem>
-                      <SelectItem value="sunnydale">Sunnydale Primary</SelectItem>
+                      {schools.length > 0 ? (
+                        schools.map((school) => (
+                          <SelectItem key={school} value={school}>
+                            {school}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-schools" disabled>
+                          No schools available
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -126,9 +180,26 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Grade</FormLabel>
-                    <FormControl>
-                      <Input placeholder="5" {...field} data-testid="input-grade" />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-grade">
+                          <SelectValue placeholder="Select grade" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {grades.length > 0 ? (
+                          grades.map((grade) => (
+                            <SelectItem key={grade} value={grade}>
+                              Grade {grade}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-grades" disabled>
+                            No grades available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -139,9 +210,26 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Class</FormLabel>
-                    <FormControl>
-                      <Input placeholder="A" {...field} data-testid="input-class" />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-class">
+                          <SelectValue placeholder="Select class" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableClasses.length > 0 ? (
+                          availableClasses.map((cls) => (
+                            <SelectItem key={cls} value={cls}>
+                              Section {cls}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-classes" disabled>
+                            {selectedSchool && selectedGrade ? "No classes available" : "Select school and grade first"}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

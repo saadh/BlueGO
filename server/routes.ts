@@ -151,6 +151,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public classes endpoint - accessible to authenticated users for form dropdowns
+  app.get("/api/classes", isAuthenticated, async (req, res) => {
+    try {
+      const classes = await storage.getAllClasses();
+      res.json(classes);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      res.status(500).json({ message: "Failed to fetch classes" });
+    }
+  });
+
   // Student management routes - parent only
   
   // Get all students for the authenticated parent
