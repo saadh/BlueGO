@@ -4,7 +4,8 @@ import {
   type Class, type InsertClass,
   type Gate, type InsertGate, type GateStatus,
   type Dismissal, type InsertDismissal, type DismissalStatus,
-  users, students, classes, gates, dismissals
+  type TeacherClass, type InsertTeacherClass,
+  users, students, classes, gates, dismissals, teacherClasses
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import session from "express-session";
@@ -56,6 +57,13 @@ export interface IStorage {
   createDismissal(dismissal: InsertDismissal): Promise<Dismissal>;
   updateDismissal(id: string, dismissal: Partial<InsertDismissal>): Promise<Dismissal | undefined>;
   deleteDismissal(id: string): Promise<boolean>;
+  
+  // Teacher-Class assignment operations
+  getTeacherClassAssignments(teacherId: string): Promise<Class[]>;
+  getClassTeacherAssignments(classId: string): Promise<User[]>;
+  createTeacherClassAssignment(assignment: InsertTeacherClass): Promise<TeacherClass>;
+  deleteTeacherClassAssignment(teacherId: string, classId: string): Promise<boolean>;
+  deleteAllTeacherClassAssignments(teacherId: string): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -261,6 +269,55 @@ export class DbStorage implements IStorage {
 
   async deleteDismissal(id: string): Promise<boolean> {
     const result = await db.delete(dismissals).where(eq(dismissals.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Teacher-Class assignment operations
+  async getTeacherClassAssignments(teacherId: string): Promise<Class[]> {
+    const assignments = await db
+      .select({
+        class: classes,
+      })
+      .from(teacherClasses)
+      .innerJoin(classes, eq(teacherClasses.classId, classes.id))
+      .where(eq(teacherClasses.teacherId, teacherId));
+    
+    return assignments.map(a => a.class);
+  }
+
+  async getClassTeacherAssignments(classId: string): Promise<User[]> {
+    const assignments = await db
+      .select({
+        teacher: users,
+      })
+      .from(teacherClasses)
+      .innerJoin(users, eq(teacherClasses.teacherId, users.id))
+      .where(eq(teacherClasses.classId, classId));
+    
+    return assignments.map(a => a.teacher);
+  }
+
+  async createTeacherClassAssignment(assignment: InsertTeacherClass): Promise<TeacherClass> {
+    const [teacherClass] = await db.insert(teacherClasses).values(assignment).returning();
+    return teacherClass;
+  }
+
+  async deleteTeacherClassAssignment(teacherId: string, classId: string): Promise<boolean> {
+    const result = await db
+      .delete(teacherClasses)
+      .where(
+        and(
+          eq(teacherClasses.teacherId, teacherId),
+          eq(teacherClasses.classId, classId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async deleteAllTeacherClassAssignments(teacherId: string): Promise<boolean> {
+    const result = await db
+      .delete(teacherClasses)
+      .where(eq(teacherClasses.teacherId, teacherId));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }

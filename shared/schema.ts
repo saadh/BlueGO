@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -70,6 +70,30 @@ export const insertClassSchema = createInsertSchema(classes).omit({
 
 export type InsertClass = z.infer<typeof insertClassSchema>;
 export type Class = typeof classes.$inferSelect;
+
+// Teacher-Class assignments junction table (many-to-many)
+export const teacherClasses = pgTable("teacher_classes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teacherId: varchar("teacher_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  classId: varchar("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  teacherIdx: index("teacher_class_teacher_idx").on(table.teacherId),
+  classIdx: index("teacher_class_class_idx").on(table.classId),
+  // Unique constraint to prevent duplicate assignments
+  uniqueTeacherClass: uniqueIndex("unique_teacher_class_idx").on(table.teacherId, table.classId),
+}));
+
+export const insertTeacherClassSchema = createInsertSchema(teacherClasses).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  teacherId: z.string().min(1, "Teacher ID is required"),
+  classId: z.string().min(1, "Class ID is required"),
+});
+
+export type InsertTeacherClass = z.infer<typeof insertTeacherClassSchema>;
+export type TeacherClass = typeof teacherClasses.$inferSelect;
 
 // Student genders
 export const studentGenders = ["male", "female"] as const;
