@@ -3,7 +3,10 @@ import CompactDismissalCard from "./CompactDismissalCard";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // todo: remove mock functionality - showing diverse students across grades/classes
 const mockCalls = [
@@ -47,6 +50,7 @@ export default function ClassroomDisplay() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedGrades, setSelectedGrades] = useState<string[]>(["5"]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>(["A"]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -55,6 +59,22 @@ export default function ClassroomDisplay() {
 
     return () => clearInterval(timer);
   }, []);
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/logout");
+    },
+    onSuccess: () => {
+      window.location.href = "/";
+    },
+    onError: () => {
+      toast({
+        title: "Logout Failed",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const filteredCalls = calls.filter(call => 
     selectedGrades.includes(call.grade) && selectedClasses.includes(call.class)
@@ -218,11 +238,23 @@ export default function ClassroomDisplay() {
               </Popover>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold" data-testid="text-current-time">
-              {currentTime.toLocaleTimeString()}
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-2xl font-bold" data-testid="text-current-time">
+                {currentTime.toLocaleTimeString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Live Updates</p>
             </div>
-            <p className="text-xs text-muted-foreground">Live Updates</p>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              data-testid="button-logout"
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
