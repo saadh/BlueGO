@@ -397,6 +397,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Teacher-Class Assignment Management
+  app.get("/api/admin/teacher-classes/:teacherId", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { teacherId } = req.params;
+      const classes = await storage.getTeacherClassAssignments(teacherId);
+      res.json(classes);
+    } catch (error) {
+      console.error('Error fetching teacher classes:', error);
+      res.status(500).json({ message: "Failed to fetch teacher classes" });
+    }
+  });
+
+  app.post("/api/admin/teacher-classes", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { teacherId, classId } = req.body;
+      
+      if (!teacherId || !classId) {
+        return res.status(400).json({ message: "Teacher ID and Class ID are required" });
+      }
+
+      const assignment = await storage.createTeacherClassAssignment({ teacherId, classId });
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      console.error('Error creating teacher-class assignment:', error);
+      // Handle unique constraint violation
+      if (error.code === '23505') {
+        return res.status(409).json({ message: "This teacher is already assigned to this class" });
+      }
+      res.status(500).json({ message: "Failed to create assignment" });
+    }
+  });
+
+  app.delete("/api/admin/teacher-classes/:teacherId/:classId", isAuthenticated, hasRole("admin"), async (req, res) => {
+    try {
+      const { teacherId, classId } = req.params;
+      await storage.deleteTeacherClassAssignment(teacherId, classId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting teacher-class assignment:', error);
+      res.status(500).json({ message: "Failed to delete assignment" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

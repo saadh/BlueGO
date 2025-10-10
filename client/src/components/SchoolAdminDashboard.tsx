@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, Users, BookOpen } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import AddGateDialog from "./AddGateDialog";
 import EditGateDialog from "./EditGateDialog";
 import AddClassDialog from "./AddClassDialog";
 import EditClassDialog from "./EditClassDialog";
+import AssignTeacherClassesDialog from "./AssignTeacherClassesDialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, Class, Gate } from "@shared/schema";
@@ -38,6 +40,9 @@ export default function SchoolAdminDashboard() {
   const [addClassOpen, setAddClassOpen] = useState(false);
   const [editClassOpen, setEditClassOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<any>(null);
+  
+  const [assignClassesOpen, setAssignClassesOpen] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch users
   const { data: users = [], isLoading: usersLoading } = useQuery<Omit<User, 'password'>[]>({
@@ -302,6 +307,14 @@ export default function SchoolAdminDashboard() {
       name: `${teacher.firstName} ${teacher.lastName}`,
     }));
 
+  // Function to get teacher's assigned classes (to be fetched per teacher)
+  const useTeacherClasses = (teacherId: string) => {
+    return useQuery<Class[]>({
+      queryKey: ["/api/admin/teacher-classes", teacherId],
+      enabled: !!teacherId,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -342,47 +355,90 @@ export default function SchoolAdminDashboard() {
                       <TableHead>Name</TableHead>
                       <TableHead>Email/Phone</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Assigned Classes</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {userArray.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
-                        <TableCell>{user.email || user.phone}</TableCell>
-                        <TableCell>
-                          <RoleBadge role={user.role} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => {
-                                setSelectedUser({
-                                  id: user.id,
-                                  name: `${user.firstName} ${user.lastName}`,
-                                  email: user.email || '',
-                                  role: user.role,
-                                });
-                                setEditUserOpen(true);
-                              }}
-                              data-testid={`button-edit-${user.id}`}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => deleteUserMutation.mutate(user.id)}
-                              data-testid={`button-delete-${user.id}`}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {userArray.map((user) => {
+                      const UserRow = () => {
+                        const { data: teacherClasses = [] } = user.role === 'teacher' 
+                          ? useTeacherClasses(user.id) 
+                          : { data: [] };
+
+                        return (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
+                            <TableCell>{user.email || user.phone}</TableCell>
+                            <TableCell>
+                              <RoleBadge role={user.role} />
+                            </TableCell>
+                            <TableCell>
+                              {user.role === 'teacher' ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {teacherClasses.length > 0 ? (
+                                    teacherClasses.map((cls) => (
+                                      <Badge key={cls.id} variant="secondary" className="text-xs">
+                                        Grade {cls.grade}-{cls.section}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">No classes</span>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                      setSelectedTeacher({
+                                        id: user.id,
+                                        name: `${user.firstName} ${user.lastName}`,
+                                      });
+                                      setAssignClassesOpen(true);
+                                    }}
+                                    data-testid={`button-assign-${user.id}`}
+                                  >
+                                    <BookOpen className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-2 justify-end">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedUser({
+                                      id: user.id,
+                                      name: `${user.firstName} ${user.lastName}`,
+                                      email: user.email || '',
+                                      role: user.role,
+                                    });
+                                    setEditUserOpen(true);
+                                  }}
+                                  data-testid={`button-edit-${user.id}`}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => deleteUserMutation.mutate(user.id)}
+                                  data-testid={`button-delete-${user.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      };
+                      
+                      return <UserRow key={user.id} />;
+                    })}
                   </TableBody>
                 </Table>
               )}
@@ -579,6 +635,14 @@ export default function SchoolAdminDashboard() {
         classData={selectedClass}
         teachers={teachersList}
       />
+      {selectedTeacher && (
+        <AssignTeacherClassesDialog 
+          open={assignClassesOpen}
+          onOpenChange={setAssignClassesOpen}
+          teacherId={selectedTeacher.id}
+          teacherName={selectedTeacher.name}
+        />
+      )}
     </div>
   );
 }
