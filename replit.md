@@ -59,6 +59,15 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Features
 
+**Authentication & Security**:
+- Secure user authentication with email/phone and password
+- Password hashing using scrypt algorithm for security
+- Session management with express-session and Passport.js
+- Protected routes requiring authentication
+- Public registration restricted to parent role only
+- Privileged roles (admin, teacher, security) must be provisioned by administrators
+- Automatic role-based redirection after login
+
 **Multi-Role Dashboard System**:
 - Role-based access control with distinct UI/UX per user type
 - Parent: Student profile management, NFC card linking
@@ -80,10 +89,15 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Models
 
-**User Schema** (currently minimal, designed for expansion):
+**User Schema**:
 - ID (UUID primary key)
-- Username (unique)
-- Password (hashed storage planned)
+- Email (optional, unique)
+- Phone (optional, unique)
+- Password (hashed with scrypt)
+- First Name
+- Last Name
+- Role (parent, teacher, security, admin)
+- Created At timestamp
 
 **Planned Entities** (evident from UI components):
 - Students (name, ID, school, grade, class, gender, NFC linkage)
@@ -119,7 +133,10 @@ Preferred communication style: Simple, everyday language.
 - **Drizzle Kit**: Migration management and schema synchronization
 
 ### Authentication & Sessions
-- **connect-pg-simple**: PostgreSQL session store (configured but not yet implemented)
+- **Passport.js**: Authentication middleware with LocalStrategy
+- **express-session**: Session management
+- **memorystore**: In-memory session store (development)
+- **scrypt**: Secure password hashing algorithm
 
 ### UI Component Libraries
 - **Radix UI**: Headless component primitives (@radix-ui/* packages)
