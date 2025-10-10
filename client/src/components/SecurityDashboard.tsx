@@ -9,6 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Gate } from "@shared/schema";
 import NFCScanButton from "./NFCScanButton";
 import DismissalCallCard from "./DismissalCallCard";
 
@@ -38,14 +42,46 @@ export default function SecurityDashboard() {
   const [dismissals, setDismissals] = useState(mockDismissals);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [selectedGate, setSelectedGate] = useState<string>("");
+  const { toast } = useToast();
+
+  // Fetch gates from API
+  const { data: gates = [] } = useQuery<Gate[]>({
+    queryKey: ['/api/gates'],
+  });
+
+  const scanMutation = useMutation({
+    mutationFn: async (data: { nfcCardId: string; gateId: string }) => {
+      const response = await apiRequest("POST", "/api/security/scan", data);
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Scan Successful",
+        description: data.message || `Dismissals created for ${data.parent?.name}`,
+      });
+      // Invalidate dismissals query to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['/api/dismissals'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Scan Failed",
+        description: error.message || "Failed to process NFC scan",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleNFCScan = (nfcId: string) => {
     if (!selectedGate) {
-      console.log('Please select a gate first');
+      toast({
+        title: "No Gate Selected",
+        description: "Please select a gate before scanning",
+        variant: "destructive",
+      });
       return;
     }
     setScanResult(nfcId);
-    console.log('NFC scanned at gate:', selectedGate, 'NFC ID:', nfcId);
+    scanMutation.mutate({ nfcCardId: nfcId, gateId: selectedGate });
   };
 
   const handleComplete = (id: string) => {
@@ -60,6 +96,8 @@ export default function SecurityDashboard() {
     console.log('Gate selected:', gate);
   };
 
+  const selectedGateName = gates.find(g => g.id === selectedGate)?.name;
+
   return (
     <div className="space-y-6">
       <div>
@@ -72,19 +110,20 @@ export default function SecurityDashboard() {
           <Select value={selectedGate} onValueChange={handleGateChange}>
             <SelectTrigger className="w-full" data-testid="select-gate">
               <SelectValue placeholder="Select a gate">
-                {selectedGate && (
+                {selectedGateName && (
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    {selectedGate}
+                    {selectedGateName}
                   </div>
                 )}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Gate A">Gate A - Main Entrance</SelectItem>
-              <SelectItem value="Gate B">Gate B - East Side</SelectItem>
-              <SelectItem value="Gate C">Gate C - West Side</SelectItem>
-              <SelectItem value="Gate D">Gate D - South Parking</SelectItem>
+              {gates.map((gate) => (
+                <SelectItem key={gate.id} value={gate.id}>
+                  {gate.name} - {gate.location}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

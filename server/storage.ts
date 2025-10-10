@@ -17,6 +17,7 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmailOrPhone(emailOrPhone: string): Promise<User | undefined>;
+  getUserByNFCCard(nfcCardId: string): Promise<User | undefined>;
   getUsersByRole(role: UserRole): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUserNFCCard(userId: string, nfcCardId: string): Promise<User | undefined>;
@@ -83,6 +84,11 @@ export class DbStorage implements IStorage {
           ? eq(users.email, emailOrPhone) 
           : eq(users.phone, emailOrPhone)
       );
+    return user;
+  }
+
+  async getUserByNFCCard(nfcCardId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.nfcCardId, nfcCardId));
     return user;
   }
 

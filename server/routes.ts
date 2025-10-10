@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, hasRole } from "./auth";
+import { setupAuth, isAuthenticated, hasRole, hashPassword } from "./auth";
 import { insertStudentSchema, insertClassSchema, insertGateSchema, insertUserSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -43,6 +43,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating NFC card:', error);
       res.status(500).json({ message: "Failed to update NFC card" });
+    }
+  });
+
+  // Get all gates - available to security personnel
+  app.get("/api/gates", isAuthenticated, hasRole("security"), async (req, res) => {
+    try {
+      const gates = await storage.getAllGates();
+      res.json(gates);
+    } catch (error) {
+      console.error('Error fetching gates:', error);
+      res.status(500).json({ message: "Failed to fetch gates" });
+    }
+  });
+
+  // Security NFC scan - creates dismissal records for all children of scanned parent
+  app.post("/api/security/scan", isAuthenticated, hasRole("security"), async (req, res) => {
+    try {
+      const { nfcCardId, gateId } = req.body;
+      
+      if (!nfcCardId || typeof nfcCardId !== 'string') {
+        return res.status(400).json({ message: "NFC card ID is required" });
+      }
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Look up parent by NFC card
+      const parent = await storage.getUserByNFCCard(nfcCardId);
+      if (!parent) {
+        return res.status(404).json({ message: "No parent found with this NFC card" });
+      }
+
+      // Get all children for this parent
+      const children = await storage.getStudentsByParentId(parent.id);
+      if (children.length === 0) {
+        return res.status(404).json({ message: "No students found for this parent" });
+      }
+
+      // Create dismissal for each child
+      const dismissals = [];
+      for (const child of children) {
+        const dismissal = await storage.createDismissal({
+          studentId: child.id,
+          parentId: parent.id,
+          gateId: gateId || null,
+          scannedByUserId: req.user.id,
+          status: "called", // Set to called to trigger classroom display
+          calledAt: new Date(),
+        });
+        dismissals.push(dismissal);
+      }
+
+      res.status(201).json({
+        message: `Created ${dismissals.length} dismissal(s)`,
+        parent: { id: parent.id, name: `${parent.firstName} ${parent.lastName}` },
+        dismissals: dismissals.length,
+      });
+    } catch (error) {
+      console.error('Error processing NFC scan:', error);
+      res.status(500).json({ message: "Failed to process scan" });
     }
   });
 
@@ -188,7 +249,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const user = await storage.createUser(validation.data);
+      // Hash the password before storing
+      const hashedPassword = await hashPassword(validation.data.password);
+      const user = await storage.createUser({
+        ...validation.data,
+        password: hashedPassword,
+      });
+      
       const { password: _, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
