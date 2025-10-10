@@ -182,13 +182,15 @@ export default function SchoolAdminDashboard() {
   // Add class mutation
   const addClassMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("POST", "/api/admin/classes", {
+      const payload: any = {
         school: "Riverside Elementary", // Default school
         grade: data.grade,
         section: data.class,
-        teacherId: data.teacher || null,
-        roomNumber: null,
-      });
+      };
+      if (data.teacher) {
+        payload.teacherId = data.teacher;
+      }
+      await apiRequest("POST", "/api/admin/classes", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
@@ -236,11 +238,14 @@ export default function SchoolAdminDashboard() {
   // Edit class mutation
   const editClassMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      await apiRequest("PATCH", `/api/admin/classes/${id}`, {
+      const payload: any = {
         grade: data.grade,
         section: data.class,
-        teacherId: data.teacher || null,
-      });
+      };
+      if (data.teacher) {
+        payload.teacherId = data.teacher;
+      }
+      await apiRequest("PATCH", `/api/admin/classes/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
