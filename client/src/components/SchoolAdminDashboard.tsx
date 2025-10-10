@@ -16,6 +16,10 @@ import AddUserDialog from "./AddUserDialog";
 import AddGateDialog from "./AddGateDialog";
 import AddClassDialog from "./AddClassDialog";
 import AssignTeacherDialog from "./AssignTeacherDialog";
+import EditUserDialog from "./EditUserDialog";
+import EditGateDialog from "./EditGateDialog";
+import EditClassDialog from "./EditClassDialog";
+import AddStudentDialog from "./AddStudentDialog";
 
 // todo: remove mock functionality
 const mockUsers = [
@@ -36,16 +40,33 @@ const mockClasses = [
   { id: "3", grade: "4", class: "A", teacher: "Mrs. Wilson", students: 30 },
 ];
 
+// todo: remove mock functionality - student records
+const mockStudents = [
+  { id: "1", name: "Emma Johnson", studentId: "ID-12345", parentName: "Sarah Johnson", parentEmail: "sarah@email.com", parentPhone: "+1 (555) 123-4567", grade: "5", class: "A", nfcCardId: "NFC-001" },
+  { id: "2", name: "Liam Smith", studentId: "ID-12346", parentName: "Michael Smith", parentEmail: "michael@email.com", parentPhone: "+1 (555) 123-4568", grade: "5", class: "A", nfcCardId: "NFC-002" },
+  { id: "3", name: "Olivia Brown", studentId: "ID-12347", parentName: "Jennifer Brown", parentEmail: "jennifer@email.com", parentPhone: "+1 (555) 123-4569", grade: "4", class: "A", nfcCardId: "" },
+];
+
 export default function SchoolAdminDashboard() {
   const [users, setUsers] = useState(mockUsers);
   const [gates, setGates] = useState(mockGates);
   const [classes, setClasses] = useState(mockClasses);
+  const [students, setStudents] = useState(mockStudents);
   
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddGateOpen, setIsAddGateOpen] = useState(false);
   const [isAddClassOpen, setIsAddClassOpen] = useState(false);
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [isAssignTeacherOpen, setIsAssignTeacherOpen] = useState(false);
+  
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isEditGateOpen, setIsEditGateOpen] = useState(false);
+  const [isEditClassOpen, setIsEditClassOpen] = useState(false);
+  
   const [selectedTeacher, setSelectedTeacher] = useState<{ id: string; name: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedGate, setSelectedGate] = useState<any>(null);
+  const [selectedClass, setSelectedClass] = useState<any>(null);
 
   const handleAddUser = (userData: any) => {
     const newUser = {
@@ -108,12 +129,79 @@ export default function SchoolAdminDashboard() {
     console.log('Classes assigned to teacher:', teacherId, assignedClassIds);
   };
 
+  const handleOpenEditUser = (user: any) => {
+    setSelectedUser(user);
+    setIsEditUserOpen(true);
+  };
+
+  const handleEditUser = (userData: any) => {
+    setUsers(users.map(u => 
+      u.id === selectedUser.id 
+        ? { ...u, ...userData }
+        : u
+    ));
+    setIsEditUserOpen(false);
+    console.log('User updated:', selectedUser.id, userData);
+  };
+
+  const handleOpenEditGate = (gate: any) => {
+    setSelectedGate(gate);
+    setIsEditGateOpen(true);
+  };
+
+  const handleEditGate = (gateData: any) => {
+    setGates(gates.map(g => 
+      g.id === selectedGate.id 
+        ? { ...g, ...gateData }
+        : g
+    ));
+    setIsEditGateOpen(false);
+    console.log('Gate updated:', selectedGate.id, gateData);
+  };
+
+  const handleOpenEditClass = (classData: any) => {
+    setSelectedClass(classData);
+    setIsEditClassOpen(true);
+  };
+
+  const handleEditClass = (classData: any) => {
+    setClasses(classes.map(c => 
+      c.id === selectedClass.id 
+        ? { ...c, ...classData }
+        : c
+    ));
+    setIsEditClassOpen(false);
+    console.log('Class updated:', selectedClass.id, classData);
+  };
+
+  const handleAddStudent = (studentData: any) => {
+    const newStudent = {
+      ...studentData,
+      id: Date.now().toString(),
+    };
+    setStudents([...students, newStudent]);
+    setIsAddStudentOpen(false);
+    console.log('Student added:', newStudent);
+  };
+
+  const handleDeleteStudent = (id: string) => {
+    setStudents(students.filter(s => s.id !== id));
+    console.log('Student deleted:', id);
+  };
+
   const availableClassOptions = classes.map(cls => ({
     id: cls.id,
     grade: cls.grade,
     class: cls.class,
     label: `Grade ${cls.grade} - Class ${cls.class}`,
   }));
+
+  const teachersList = users
+    .filter(user => user.role === 'teacher')
+    .map(teacher => ({
+      id: teacher.id,
+      name: teacher.name,
+    }));
 
   const getTeacherAssignments = (teacherId: string) => {
     const user = users.find(u => u.id === teacherId);
@@ -195,7 +283,12 @@ export default function SchoolAdminDashboard() {
                               <Users className="w-4 h-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" data-testid={`button-edit-${user.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleOpenEditUser(user)}
+                            data-testid={`button-edit-${user.id}`}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button 
@@ -252,7 +345,12 @@ export default function SchoolAdminDashboard() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
-                          <Button variant="ghost" size="icon" data-testid={`button-edit-gate-${gate.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleOpenEditGate(gate)}
+                            data-testid={`button-edit-gate-${gate.id}`}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button 
@@ -307,7 +405,12 @@ export default function SchoolAdminDashboard() {
                       <TableCell>{cls.students}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
-                          <Button variant="ghost" size="icon" data-testid={`button-edit-class-${cls.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleOpenEditClass(cls)}
+                            data-testid={`button-edit-class-${cls.id}`}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button 
@@ -336,14 +439,54 @@ export default function SchoolAdminDashboard() {
                   <CardTitle>Student Management</CardTitle>
                   <CardDescription>View and manage all student records</CardDescription>
                 </div>
-                <Button data-testid="button-add-student-admin">
+                <Button onClick={() => setIsAddStudentOpen(true)} data-testid="button-add-student-admin">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Student
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">Student records will appear here</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student Name</TableHead>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Grade</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Parent</TableHead>
+                    <TableHead>NFC Card</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {students.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell>{student.studentId}</TableCell>
+                      <TableCell>Grade {student.grade}</TableCell>
+                      <TableCell>Class {student.class}</TableCell>
+                      <TableCell>{student.parentName}</TableCell>
+                      <TableCell>
+                        <span className={`text-sm ${student.nfcCardId ? 'text-[#00C851]' : 'text-muted-foreground'}`}>
+                          {student.nfcCardId || 'Not assigned'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteStudent(student.id)}
+                            data-testid={`button-delete-student-${student.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
@@ -363,6 +506,12 @@ export default function SchoolAdminDashboard() {
         open={isAddClassOpen} 
         onOpenChange={setIsAddClassOpen}
         onSubmit={handleAddClass}
+        teachers={teachersList}
+      />
+      <AddStudentDialog 
+        open={isAddStudentOpen} 
+        onOpenChange={setIsAddStudentOpen}
+        onSubmit={handleAddStudent}
       />
       <AssignTeacherDialog 
         open={isAssignTeacherOpen} 
@@ -371,6 +520,25 @@ export default function SchoolAdminDashboard() {
         availableClasses={availableClassOptions}
         currentAssignments={selectedTeacher ? users.find(u => u.id === selectedTeacher.id)?.assignedClasses || [] : []}
         onSubmit={handleAssignClasses}
+      />
+      <EditUserDialog 
+        open={isEditUserOpen} 
+        onOpenChange={setIsEditUserOpen}
+        onSubmit={handleEditUser}
+        user={selectedUser}
+      />
+      <EditGateDialog 
+        open={isEditGateOpen} 
+        onOpenChange={setIsEditGateOpen}
+        onSubmit={handleEditGate}
+        gate={selectedGate}
+      />
+      <EditClassDialog 
+        open={isEditClassOpen} 
+        onOpenChange={setIsEditClassOpen}
+        onSubmit={handleEditClass}
+        classData={selectedClass}
+        teachers={teachersList}
       />
     </div>
   );

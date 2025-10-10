@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { User, Shield, GraduationCap, Users, Eye } from "lucide-react";
 
-export type UserRole = "parent" | "security" | "teacher" | "section_manager" | "floor_supervisor" | "student";
+export type UserRole = "parent" | "security" | "teacher" | "section_manager" | "floor_supervisor" | "school_admin" | "student";
 
 interface RoleBadgeProps {
   role: UserRole;
@@ -38,6 +38,11 @@ const roleConfig = {
     label: "Student",
     icon: GraduationCap,
     variant: "outline" as const,
+  },
+  school_admin: {
+    label: "School Admin",
+    icon: Shield,
+    variant: "default" as const,
   },
 };
 

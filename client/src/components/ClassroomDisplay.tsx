@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import CompactDismissalCard from "./CompactDismissalCard";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -42,11 +43,17 @@ const mockCalls = [
   { id: "30", studentName: "Joseph Perez", grade: "5", class: "A", parentName: "George Perez", time: "2:16 PM", isCompleted: true, gate: "Gate A" },
 ];
 
+interface SelectedFilter {
+  grade: string;
+  class: string;
+}
+
 export default function ClassroomDisplay() {
   const [calls, setCalls] = useState(mockCalls);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedGrade, setSelectedGrade] = useState("5");
-  const [selectedClass, setSelectedClass] = useState("A");
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilter[]>([
+    { grade: "5", class: "A" }
+  ]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -56,55 +63,97 @@ export default function ClassroomDisplay() {
     return () => clearInterval(timer);
   }, []);
 
-  const activeCalls = calls.filter(c => !c.isCompleted);
-  const completedCalls = calls.filter(c => c.isCompleted);
+  const filteredCalls = calls.filter(call => 
+    selectedFilters.some(filter => 
+      call.grade === filter.grade && call.class === filter.class
+    )
+  );
 
-  const handleGradeChange = (grade: string) => {
-    setSelectedGrade(grade);
-    console.log('Grade changed to:', grade);
+  const activeCalls = filteredCalls.filter(c => !c.isCompleted);
+  const completedCalls = filteredCalls.filter(c => c.isCompleted);
+
+  const handleAddFilter = () => {
+    setSelectedFilters([...selectedFilters, { grade: "1", class: "A" }]);
   };
 
-  const handleClassChange = (classValue: string) => {
-    setSelectedClass(classValue);
-    console.log('Class changed to:', classValue);
+  const handleRemoveFilter = (index: number) => {
+    if (selectedFilters.length > 1) {
+      setSelectedFilters(selectedFilters.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleGradeChange = (index: number, grade: string) => {
+    const newFilters = [...selectedFilters];
+    newFilters[index].grade = grade;
+    setSelectedFilters(newFilters);
+    console.log('Filter updated:', newFilters);
+  };
+
+  const handleClassChange = (index: number, classValue: string) => {
+    const newFilters = [...selectedFilters];
+    newFilters[index].class = classValue;
+    setSelectedFilters(newFilters);
+    console.log('Filter updated:', newFilters);
   };
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1800px] mx-auto">
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div>
               <h1 className="text-3xl font-bold">Dismissal Queue</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Active: {activeCalls.length} • Completed: {completedCalls.length} • Total: {calls.length}
+                Active: {activeCalls.length} • Completed: {completedCalls.length} • Total: {filteredCalls.length}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Select value={selectedGrade} onValueChange={handleGradeChange}>
-                <SelectTrigger className="w-[100px]" data-testid="select-grade">
-                  <SelectValue placeholder="Grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Grade 1</SelectItem>
-                  <SelectItem value="2">Grade 2</SelectItem>
-                  <SelectItem value="3">Grade 3</SelectItem>
-                  <SelectItem value="4">Grade 4</SelectItem>
-                  <SelectItem value="5">Grade 5</SelectItem>
-                  <SelectItem value="6">Grade 6</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={selectedClass} onValueChange={handleClassChange}>
-                <SelectTrigger className="w-[100px]" data-testid="select-class">
-                  <SelectValue placeholder="Class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A">Class A</SelectItem>
-                  <SelectItem value="B">Class B</SelectItem>
-                  <SelectItem value="C">Class C</SelectItem>
-                  <SelectItem value="D">Class D</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-2 flex-wrap">
+              {selectedFilters.map((filter, index) => (
+                <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-muted">
+                  <Select value={filter.grade} onValueChange={(value) => handleGradeChange(index, value)}>
+                    <SelectTrigger className="w-[100px]" data-testid={`select-grade-${index}`}>
+                      <SelectValue placeholder="Grade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Grade 1</SelectItem>
+                      <SelectItem value="2">Grade 2</SelectItem>
+                      <SelectItem value="3">Grade 3</SelectItem>
+                      <SelectItem value="4">Grade 4</SelectItem>
+                      <SelectItem value="5">Grade 5</SelectItem>
+                      <SelectItem value="6">Grade 6</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filter.class} onValueChange={(value) => handleClassChange(index, value)}>
+                    <SelectTrigger className="w-[100px]" data-testid={`select-class-${index}`}>
+                      <SelectValue placeholder="Class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A">Class A</SelectItem>
+                      <SelectItem value="B">Class B</SelectItem>
+                      <SelectItem value="C">Class C</SelectItem>
+                      <SelectItem value="D">Class D</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {selectedFilters.length > 1 && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleRemoveFilter(index)}
+                      data-testid={`button-remove-filter-${index}`}
+                    >
+                      <span className="text-destructive">×</span>
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleAddFilter}
+                data-testid="button-add-filter"
+              >
+                + Add Class
+              </Button>
             </div>
           </div>
           <div className="text-right">
@@ -137,10 +186,10 @@ export default function ClassroomDisplay() {
           </div>
         )}
 
-        {calls.length === 0 && (
+        {filteredCalls.length === 0 && (
           <div className="text-center py-16">
-            <h2 className="text-2xl font-semibold text-muted-foreground">No Active Dismissals</h2>
-            <p className="text-muted-foreground mt-2">Dismissal calls will appear here in real-time</p>
+            <h2 className="text-2xl font-semibold text-muted-foreground">No Dismissals for Selected Classes</h2>
+            <p className="text-muted-foreground mt-2">Dismissal calls for the selected grade(s) and class(es) will appear here in real-time</p>
           </div>
         )}
       </div>

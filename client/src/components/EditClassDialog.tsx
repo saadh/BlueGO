@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,14 +38,15 @@ interface Teacher {
   name: string;
 }
 
-interface AddClassDialogProps {
+interface EditClassDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: z.infer<typeof classSchema>) => void;
+  classData: { id: string; grade: string; class: string; teacher: string } | null;
   teachers: Teacher[];
 }
 
-export default function AddClassDialog({ open, onOpenChange, onSubmit, teachers }: AddClassDialogProps) {
+export default function EditClassDialog({ open, onOpenChange, onSubmit, classData, teachers }: EditClassDialogProps) {
   const form = useForm<z.infer<typeof classSchema>>({
     resolver: zodResolver(classSchema),
     defaultValues: {
@@ -54,6 +56,16 @@ export default function AddClassDialog({ open, onOpenChange, onSubmit, teachers 
     },
   });
 
+  useEffect(() => {
+    if (classData) {
+      form.reset({
+        grade: classData.grade,
+        class: classData.class,
+        teacher: classData.teacher,
+      });
+    }
+  }, [classData, form]);
+
   const handleSubmit = (data: z.infer<typeof classSchema>) => {
     onSubmit(data);
     form.reset();
@@ -61,11 +73,11 @@ export default function AddClassDialog({ open, onOpenChange, onSubmit, teachers 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-testid="dialog-add-class">
+      <DialogContent data-testid="dialog-edit-class">
         <DialogHeader>
-          <DialogTitle>Add Class</DialogTitle>
+          <DialogTitle>Edit Class</DialogTitle>
           <DialogDescription>
-            Create a new grade and class
+            Update class information
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -130,7 +142,7 @@ export default function AddClassDialog({ open, onOpenChange, onSubmit, teachers 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">
                 Cancel
               </Button>
-              <Button type="submit" data-testid="button-submit">Add Class</Button>
+              <Button type="submit" data-testid="button-submit">Save Changes</Button>
             </div>
           </form>
         </Form>
