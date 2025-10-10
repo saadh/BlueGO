@@ -6,17 +6,33 @@ BlueGO is a comprehensive school dismissal management system that streamlines st
 
 ## Recent Changes (October 10, 2025)
 
+**Student Management System (Database-Backed)**:
+- Migrated from in-memory to PostgreSQL database storage
+  - Created students table with parent relationship (foreign key with cascade delete)
+  - Users table now stored in PostgreSQL with proper indexes
+  - Implemented DbStorage class using Drizzle ORM
+- Full CRUD API for student management
+  - GET /api/students - Fetch all students for authenticated parent
+  - POST /api/students - Create student with auto-parent linking
+  - PATCH /api/students/:id - Update student (validated, prevents parent ID reassignment)
+  - DELETE /api/students/:id - Delete student with ownership verification
+- Parent NFC card auto-linking to all children
+  - When parent links NFC card, automatically updates all existing children
+  - When creating new student, auto-links parent's NFC card if available
+- Frontend React Query integration
+  - Real-time student data fetching from database
+  - Optimistic UI updates with proper cache invalidation
+  - Success/error toast notifications for all mutations
+  - Loading states and empty state handling
+- End-to-end tested: add students → link NFC → verify auto-linking to all children
+
 **Parent Profile & NFC Card Integration**:
 - Integrated authenticated user data into parent dashboard
-- Parent profile now displays real email/phone from user account instead of mock data
+- Parent profile now displays real email/phone from user account
 - Implemented parent NFC card linking functionality
   - Created API endpoint: POST /api/parent/nfc-card (protected, parent-role only)
-  - Added updateUserNFCCard method to storage interface
   - Built frontend mutation with React Query for NFC card updates
-  - Includes success/error toast notifications
   - Dialog UI for manual NFC card entry and management
-- NFC card automatically stores to parent account (ready for future auto-linking to children)
-- End-to-end tested: registration → authentication → profile display → NFC linking → UI updates
 
 ## User Preferences
 
