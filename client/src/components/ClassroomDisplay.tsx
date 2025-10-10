@@ -4,53 +4,71 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, LogOut } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
-// todo: remove mock functionality - showing diverse students across grades/classes
-const mockCalls = [
-  { id: "1", studentName: "Emma Johnson", grade: "5", class: "A", parentName: "Sarah Johnson", time: "2:45 PM", isNew: true, gate: "Gate A" },
-  { id: "2", studentName: "Liam Smith", grade: "5", class: "B", parentName: "Michael Smith", time: "2:44 PM", isNew: true, gate: "Gate B" },
-  { id: "3", studentName: "Olivia Brown", grade: "4", class: "A", parentName: "Jennifer Brown", time: "2:43 PM", isNew: true, gate: "Gate A" },
-  { id: "4", studentName: "Noah Davis", grade: "4", class: "B", parentName: "David Davis", time: "2:42 PM", isNew: true, gate: "Gate C" },
-  { id: "5", studentName: "Ava Wilson", grade: "3", class: "A", parentName: "Emily Wilson", time: "2:41 PM", isNew: true, gate: "Gate A" },
-  { id: "6", studentName: "Ethan Martinez", grade: "3", class: "C", parentName: "Carlos Martinez", time: "2:40 PM", gate: "Gate B" },
-  { id: "7", studentName: "Sophia Anderson", grade: "6", class: "A", parentName: "Linda Anderson", time: "2:39 PM", gate: "Gate A" },
-  { id: "8", studentName: "Mason Taylor", grade: "6", class: "B", parentName: "James Taylor", time: "2:38 PM", gate: "Gate C" },
-  { id: "9", studentName: "Isabella Thomas", grade: "2", class: "A", parentName: "Patricia Thomas", time: "2:37 PM", gate: "Gate A" },
-  { id: "10", studentName: "Lucas Jackson", grade: "2", class: "B", parentName: "Robert Jackson", time: "2:36 PM", gate: "Gate B" },
-  { id: "11", studentName: "Mia White", grade: "1", class: "A", parentName: "Mary White", time: "2:35 PM", gate: "Gate A" },
-  { id: "12", studentName: "Henry Harris", grade: "1", class: "B", parentName: "John Harris", time: "2:34 PM", gate: "Gate C" },
-  { id: "13", studentName: "Charlotte Martin", grade: "5", class: "C", parentName: "Barbara Martin", time: "2:33 PM", gate: "Gate B" },
-  { id: "14", studentName: "Alexander Lee", grade: "4", class: "C", parentName: "Susan Lee", time: "2:32 PM", gate: "Gate A" },
-  { id: "15", studentName: "Amelia Walker", grade: "3", class: "B", parentName: "Jessica Walker", time: "2:31 PM", gate: "Gate A" },
-  { id: "16", studentName: "Benjamin Hall", grade: "5", class: "A", parentName: "Daniel Hall", time: "2:30 PM", isCompleted: true, gate: "Gate B" },
-  { id: "17", studentName: "Harper Allen", grade: "5", class: "D", parentName: "Sarah Allen", time: "2:29 PM", isCompleted: true, gate: "Gate A" },
-  { id: "18", studentName: "Elijah Young", grade: "4", class: "D", parentName: "Nancy Young", time: "2:28 PM", isCompleted: true, gate: "Gate C" },
-  { id: "19", studentName: "Evelyn King", grade: "6", class: "C", parentName: "Betty King", time: "2:27 PM", isCompleted: true, gate: "Gate A" },
-  { id: "20", studentName: "James Wright", grade: "2", class: "C", parentName: "Helen Wright", time: "2:26 PM", isCompleted: true, gate: "Gate B" },
-  { id: "21", studentName: "Abigail Lopez", grade: "1", class: "C", parentName: "Sandra Lopez", time: "2:25 PM", isCompleted: true, gate: "Gate A" },
-  { id: "22", studentName: "William Hill", grade: "6", class: "D", parentName: "Ashley Hill", time: "2:24 PM", isCompleted: true, gate: "Gate C" },
-  { id: "23", studentName: "Emily Scott", grade: "3", class: "D", parentName: "Donna Scott", time: "2:23 PM", isCompleted: true, gate: "Gate B" },
-  { id: "24", studentName: "Michael Green", grade: "4", class: "A", parentName: "Carol Green", time: "2:22 PM", isCompleted: true, gate: "Gate A" },
-  { id: "25", studentName: "Elizabeth Adams", grade: "2", class: "D", parentName: "Michelle Adams", time: "2:21 PM", isCompleted: true, gate: "Gate A" },
-  { id: "26", studentName: "Daniel Baker", grade: "1", class: "D", parentName: "Kimberly Baker", time: "2:20 PM", isCompleted: true, gate: "Gate B" },
-  { id: "27", studentName: "Sofia Nelson", grade: "5", class: "B", parentName: "Lisa Nelson", time: "2:19 PM", isCompleted: true, gate: "Gate C" },
-  { id: "28", studentName: "Matthew Carter", grade: "6", class: "A", parentName: "Dorothy Carter", time: "2:18 PM", isCompleted: true, gate: "Gate A" },
-  { id: "29", studentName: "Avery Mitchell", grade: "3", class: "A", parentName: "Karen Mitchell", time: "2:17 PM", isCompleted: true, gate: "Gate B" },
-  { id: "30", studentName: "Joseph Perez", grade: "2", class: "A", parentName: "George Perez", time: "2:16 PM", isCompleted: true, gate: "Gate A" },
-];
-
-const GRADES = ["1", "2", "3", "4", "5", "6"];
-const CLASSES = ["A", "B", "C", "D"];
+interface DismissalCall {
+  id: string;
+  studentName: string;
+  grade: string;
+  class: string;
+  parentName: string;
+  time: string;
+  isNew?: boolean;
+  isCompleted?: boolean;
+  gate: string;
+}
 
 export default function ClassroomDisplay() {
-  const [calls, setCalls] = useState(mockCalls);
+  // Fetch dismissals from API
+  const { data: dismissalsData = [], isLoading } = useQuery({
+    queryKey: ["/api/teacher/dismissals"],
+    queryFn: async () => {
+      const res = await fetch("/api/teacher/dismissals", {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`Failed to fetch dismissals: ${res.statusText}`);
+      return res.json();
+    },
+    refetchInterval: 5000, // Poll every 5 seconds for new dismissals
+  });
+
+  // Transform API data to match expected format
+  const calls: DismissalCall[] = dismissalsData.map((d: any) => ({
+    id: d.id,
+    studentName: d.studentName,
+    grade: d.studentGrade,
+    class: d.studentClass,
+    parentName: `${d.parentFirstName} ${d.parentLastName}`,
+    time: d.calledAt ? format(new Date(d.calledAt), "h:mm a") : "N/A",
+    isNew: d.status === "called",
+    isCompleted: d.status === "completed",
+    gate: d.gateName || "Unknown",
+  }));
+
+  // Dynamically get unique grades and classes from the fetched data
+  const uniqueGrades = Array.from(new Set(calls.map(c => c.grade))).sort();
+  const uniqueClasses = Array.from(new Set(calls.map(c => c.class))).sort();
+  
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedGrades, setSelectedGrades] = useState<string[]>(["5"]);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>(["A"]);
+  const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Initialize selected grades and classes when data loads
+  useEffect(() => {
+    if (uniqueGrades.length > 0 && selectedGrades.length === 0) {
+      setSelectedGrades(uniqueGrades);
+    }
+  }, [uniqueGrades]);
+
+  useEffect(() => {
+    if (uniqueClasses.length > 0 && selectedClasses.length === 0) {
+      setSelectedClasses(uniqueClasses);
+    }
+  }, [uniqueClasses]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -105,31 +123,45 @@ export default function ClassroomDisplay() {
 
   const handleSelectAllGrades = (checked: boolean) => {
     if (checked) {
-      setSelectedGrades([...GRADES]);
+      setSelectedGrades([...uniqueGrades]);
     } else {
-      setSelectedGrades([GRADES[0]]);
+      setSelectedGrades(uniqueGrades[0] ? [uniqueGrades[0]] : []);
     }
   };
 
   const handleSelectAllClasses = (checked: boolean) => {
     if (checked) {
-      setSelectedClasses([...CLASSES]);
+      setSelectedClasses([...uniqueClasses]);
     } else {
-      setSelectedClasses([CLASSES[0]]);
+      setSelectedClasses(uniqueClasses[0] ? [uniqueClasses[0]] : []);
     }
   };
 
   const getGradeLabel = () => {
-    if (selectedGrades.length === GRADES.length) return "All Grades";
+    if (selectedGrades.length === uniqueGrades.length) return "All Grades";
     if (selectedGrades.length === 1) return `Grade ${selectedGrades[0]}`;
     return `${selectedGrades.length} Grades`;
   };
 
   const getClassLabel = () => {
-    if (selectedClasses.length === CLASSES.length) return "All Classes";
+    if (selectedClasses.length === uniqueClasses.length) return "All Classes";
     if (selectedClasses.length === 1) return `Class ${selectedClasses[0]}`;
     return `${selectedClasses.length} Classes`;
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-[1800px] mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="text-lg text-muted-foreground">Loading dismissals...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -157,18 +189,18 @@ export default function ClassroomDisplay() {
                       data-testid="checkbox-select-all-grades"
                     >
                       <Checkbox 
-                        checked={selectedGrades.length === GRADES.length}
+                        checked={selectedGrades.length === uniqueGrades.length}
                         onCheckedChange={handleSelectAllGrades}
                       />
                       <label 
                         className="text-sm font-medium cursor-pointer flex-1"
-                        onClick={() => handleSelectAllGrades(selectedGrades.length !== GRADES.length)}
+                        onClick={() => handleSelectAllGrades(selectedGrades.length !== uniqueGrades.length)}
                       >
                         Select All
                       </label>
                     </div>
                     <div className="h-px bg-border my-1" />
-                    {GRADES.map((grade) => (
+                    {uniqueGrades.map((grade) => (
                       <div
                         key={grade}
                         className="flex items-center space-x-2 p-2 rounded-md hover-elevate active-elevate-2"
@@ -204,18 +236,18 @@ export default function ClassroomDisplay() {
                       data-testid="checkbox-select-all-classes"
                     >
                       <Checkbox 
-                        checked={selectedClasses.length === CLASSES.length}
+                        checked={selectedClasses.length === uniqueClasses.length}
                         onCheckedChange={handleSelectAllClasses}
                       />
                       <label 
                         className="text-sm font-medium cursor-pointer flex-1"
-                        onClick={() => handleSelectAllClasses(selectedClasses.length !== CLASSES.length)}
+                        onClick={() => handleSelectAllClasses(selectedClasses.length !== uniqueClasses.length)}
                       >
                         Select All
                       </label>
                     </div>
                     <div className="h-px bg-border my-1" />
-                    {CLASSES.map((classValue) => (
+                    {uniqueClasses.map((classValue) => (
                       <div
                         key={classValue}
                         className="flex items-center space-x-2 p-2 rounded-md hover-elevate active-elevate-2"

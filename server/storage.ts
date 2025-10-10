@@ -7,7 +7,7 @@ import {
   type TeacherClass, type InsertTeacherClass,
   users, students, classes, gates, dismissals, teacherClasses
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { db } from "./db";
@@ -54,6 +54,7 @@ export interface IStorage {
   getDismissalById(id: string): Promise<Dismissal | undefined>;
   getDismissalsByStudent(studentId: string): Promise<Dismissal[]>;
   getDismissalsByStatus(status: DismissalStatus): Promise<Dismissal[]>;
+  getDismissalsForTeacherClasses(teacherId: string): Promise<any[]>;
   createDismissal(dismissal: InsertDismissal): Promise<Dismissal>;
   updateDismissal(id: string, dismissal: Partial<InsertDismissal>): Promise<Dismissal | undefined>;
   deleteDismissal(id: string): Promise<boolean>;
@@ -251,6 +252,53 @@ export class DbStorage implements IStorage {
 
   async getDismissalsByStatus(status: DismissalStatus): Promise<Dismissal[]> {
     return await db.select().from(dismissals).where(eq(dismissals.status, status));
+  }
+
+  async getDismissalsForTeacherClasses(teacherId: string): Promise<any[]> {
+    // Get all classes assigned to this teacher
+    const teacherClasses = await this.getTeacherClassAssignments(teacherId);
+    const classIds = teacherClasses.map(c => c.id);
+    
+    if (classIds.length === 0) {
+      return [];
+    }
+
+    // Get all students in these classes
+    const studentsInClasses = await db
+      .select()
+      .from(students)
+      .where(inArray(students.classId, classIds));
+    
+    const studentIds = studentsInClasses.map(s => s.id);
+    
+    if (studentIds.length === 0) {
+      return [];
+    }
+
+    // Get dismissals for these students with joined data
+    const dismissalsWithDetails = await db
+      .select({
+        id: dismissals.id,
+        studentId: dismissals.studentId,
+        parentId: dismissals.parentId,
+        gateId: dismissals.gateId,
+        status: dismissals.status,
+        calledAt: dismissals.calledAt,
+        completedAt: dismissals.completedAt,
+        studentName: students.name,
+        studentGrade: students.grade,
+        studentClass: students.class,
+        parentFirstName: users.firstName,
+        parentLastName: users.lastName,
+        gateName: gates.name,
+      })
+      .from(dismissals)
+      .innerJoin(students, eq(dismissals.studentId, students.id))
+      .innerJoin(users, eq(dismissals.parentId, users.id))
+      .leftJoin(gates, eq(dismissals.gateId, gates.id))
+      .where(inArray(dismissals.studentId, studentIds));
+
+    return dismissalsWithDetails;
   }
 
   async createDismissal(insertDismissal: InsertDismissal): Promise<Dismissal> {

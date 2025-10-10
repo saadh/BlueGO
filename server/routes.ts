@@ -107,6 +107,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Teacher routes - classroom display dismissals
+  
+  // Get all dismissals for teacher's assigned classes
+  app.get("/api/teacher/dismissals", isAuthenticated, hasRole("teacher"), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const dismissals = await storage.getDismissalsForTeacherClasses(req.user.id);
+      res.json(dismissals);
+    } catch (error) {
+      console.error('Error fetching teacher dismissals:', error);
+      res.status(500).json({ message: "Failed to fetch dismissals" });
+    }
+  });
+
   // Student management routes - parent only
   
   // Get all students for the authenticated parent
