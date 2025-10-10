@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { User, Shield, GraduationCap, Users, Eye } from "lucide-react";
-
-export type UserRole = "parent" | "security" | "teacher" | "section_manager" | "floor_supervisor" | "school_admin" | "student";
+import { User, Shield, GraduationCap } from "lucide-react";
+import type { UserRole } from "@shared/schema";
 
 interface RoleBadgeProps {
   role: UserRole;
@@ -24,23 +23,8 @@ const roleConfig = {
     icon: GraduationCap,
     variant: "secondary" as const,
   },
-  section_manager: {
-    label: "Section Manager",
-    icon: Users,
-    variant: "secondary" as const,
-  },
-  floor_supervisor: {
-    label: "Floor Supervisor",
-    icon: Eye,
-    variant: "secondary" as const,
-  },
-  student: {
-    label: "Student",
-    icon: GraduationCap,
-    variant: "outline" as const,
-  },
-  school_admin: {
-    label: "School Admin",
+  admin: {
+    label: "Admin",
     icon: Shield,
     variant: "default" as const,
   },
@@ -48,6 +32,16 @@ const roleConfig = {
 
 export default function RoleBadge({ role, className }: RoleBadgeProps) {
   const config = roleConfig[role];
+  
+  if (!config) {
+    console.error(`Unknown role: ${role}`);
+    return (
+      <Badge variant="outline" className={className} data-testid={`badge-role-${role}`}>
+        {role}
+      </Badge>
+    );
+  }
+  
   const Icon = config.icon;
 
   return (
