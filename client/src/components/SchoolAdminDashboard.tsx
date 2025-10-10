@@ -13,12 +13,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import RoleBadge from "./RoleBadge";
+import AddUserDialog from "./AddUserDialog";
+import EditUserDialog from "./EditUserDialog";
+import AddGateDialog from "./AddGateDialog";
+import EditGateDialog from "./EditGateDialog";
+import AddClassDialog from "./AddClassDialog";
+import EditClassDialog from "./EditClassDialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, Class, Gate } from "@shared/schema";
 
 export default function SchoolAdminDashboard() {
   const { toast } = useToast();
+
+  // Dialog state
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [editUserOpen, setEditUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  
+  const [addGateOpen, setAddGateOpen] = useState(false);
+  const [editGateOpen, setEditGateOpen] = useState(false);
+  const [selectedGate, setSelectedGate] = useState<any>(null);
+  
+  const [addClassOpen, setAddClassOpen] = useState(false);
+  const [editClassOpen, setEditClassOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<any>(null);
 
   // Fetch users
   const { data: users = [], isLoading: usersLoading } = useQuery<Omit<User, 'password'>[]>({
@@ -98,6 +117,173 @@ export default function SchoolAdminDashboard() {
     },
   });
 
+  // Add user mutation
+  const addUserMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const [firstName, ...lastNameParts] = data.name.split(' ');
+      const lastName = lastNameParts.join(' ') || firstName;
+      
+      await apiRequest("POST", "/api/admin/users", {
+        firstName,
+        lastName,
+        email: data.email,
+        role: data.role,
+        password: "changeme123", // Default password
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setAddUserOpen(false);
+      toast({
+        title: "Success",
+        description: "User added successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Add gate mutation
+  const addGateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest("POST", "/api/admin/gates", {
+        name: data.name,
+        location: data.location,
+        status: data.status.toLowerCase(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/gates"] });
+      setAddGateOpen(false);
+      toast({
+        title: "Success",
+        description: "Gate added successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add gate",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Add class mutation
+  const addClassMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest("POST", "/api/admin/classes", {
+        school: "Riverside Elementary", // Default school
+        grade: parseInt(data.grade),
+        section: data.class,
+        teacherId: data.teacher || null,
+        roomNumber: null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
+      setAddClassOpen(false);
+      toast({
+        title: "Success",
+        description: "Class added successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add class",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Edit gate mutation
+  const editGateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest("PATCH", `/api/admin/gates/${id}`, {
+        name: data.name,
+        location: data.location,
+        status: data.status.toLowerCase(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/gates"] });
+      setEditGateOpen(false);
+      toast({
+        title: "Success",
+        description: "Gate updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update gate",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Edit class mutation
+  const editClassMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest("PATCH", `/api/admin/classes/${id}`, {
+        grade: parseInt(data.grade),
+        section: data.class,
+        teacherId: data.teacher || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
+      setEditClassOpen(false);
+      toast({
+        title: "Success",
+        description: "Class updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update class",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddUser = (data: any) => {
+    addUserMutation.mutate(data);
+  };
+
+  const handleEditUser = (data: any) => {
+    // Edit user not implemented in API yet - placeholder
+    console.log("Edit user (not yet implemented):", data);
+    setEditUserOpen(false);
+  };
+
+  const handleAddGate = (data: any) => {
+    addGateMutation.mutate(data);
+  };
+
+  const handleEditGate = (data: any) => {
+    if (selectedGate) {
+      editGateMutation.mutate({ id: selectedGate.id, data });
+    }
+  };
+
+  const handleAddClass = (data: any) => {
+    addClassMutation.mutate(data);
+  };
+
+  const handleEditClass = (data: any) => {
+    if (selectedClass) {
+      editClassMutation.mutate({ id: selectedClass.id, data });
+    }
+  };
+
   const getTeacherName = (teacherId: string | null) => {
     if (!teacherId) return "Unassigned";
     const userArray = Array.isArray(users) ? users : [];
@@ -138,7 +324,7 @@ export default function SchoolAdminDashboard() {
                   <CardTitle>User Management</CardTitle>
                   <CardDescription>Add, edit, and manage all system users</CardDescription>
                 </div>
-                <Button data-testid="button-add-user">
+                <Button onClick={() => setAddUserOpen(true)} data-testid="button-add-user">
                   <Plus className="w-4 h-4 mr-2" />
                   Add User
                 </Button>
@@ -171,6 +357,22 @@ export default function SchoolAdminDashboard() {
                           <div className="flex gap-2 justify-end">
                             <Button 
                               variant="ghost" 
+                              size="icon"
+                              onClick={() => {
+                                setSelectedUser({
+                                  id: user.id,
+                                  name: `${user.firstName} ${user.lastName}`,
+                                  email: user.email || '',
+                                  role: user.role,
+                                });
+                                setEditUserOpen(true);
+                              }}
+                              data-testid={`button-edit-${user.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
                               size="icon" 
                               onClick={() => deleteUserMutation.mutate(user.id)}
                               data-testid={`button-delete-${user.id}`}
@@ -196,7 +398,7 @@ export default function SchoolAdminDashboard() {
                   <CardTitle>Security Gates</CardTitle>
                   <CardDescription>Manage security gate locations and status</CardDescription>
                 </div>
-                <Button data-testid="button-add-gate">
+                <Button onClick={() => setAddGateOpen(true)} data-testid="button-add-gate">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Gate
                 </Button>
@@ -231,6 +433,22 @@ export default function SchoolAdminDashboard() {
                           <div className="flex gap-2 justify-end">
                             <Button 
                               variant="ghost" 
+                              size="icon"
+                              onClick={() => {
+                                setSelectedGate({
+                                  id: gate.id,
+                                  name: gate.name,
+                                  location: gate.location,
+                                  status: gate.status,
+                                });
+                                setEditGateOpen(true);
+                              }}
+                              data-testid={`button-edit-gate-${gate.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
                               size="icon" 
                               onClick={() => deleteGateMutation.mutate(gate.id)}
                               data-testid={`button-delete-gate-${gate.id}`}
@@ -256,7 +474,7 @@ export default function SchoolAdminDashboard() {
                   <CardTitle>Class Management</CardTitle>
                   <CardDescription>View and manage grades and classes</CardDescription>
                 </div>
-                <Button data-testid="button-add-class">
+                <Button onClick={() => setAddClassOpen(true)} data-testid="button-add-class">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Class
                 </Button>
@@ -291,6 +509,22 @@ export default function SchoolAdminDashboard() {
                           <div className="flex gap-2 justify-end">
                             <Button 
                               variant="ghost" 
+                              size="icon"
+                              onClick={() => {
+                                setSelectedClass({
+                                  id: cls.id,
+                                  grade: cls.grade.toString(),
+                                  class: cls.section,
+                                  teacher: cls.teacherId || '',
+                                });
+                                setEditClassOpen(true);
+                              }}
+                              data-testid={`button-edit-class-${cls.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
                               size="icon" 
                               onClick={() => deleteClassMutation.mutate(cls.id)}
                               data-testid={`button-delete-class-${cls.id}`}
@@ -308,6 +542,43 @@ export default function SchoolAdminDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <AddUserDialog 
+        open={addUserOpen}
+        onOpenChange={setAddUserOpen}
+        onSubmit={handleAddUser}
+      />
+      <EditUserDialog 
+        open={editUserOpen}
+        onOpenChange={setEditUserOpen}
+        onSubmit={handleEditUser}
+        user={selectedUser}
+      />
+      <AddGateDialog 
+        open={addGateOpen}
+        onOpenChange={setAddGateOpen}
+        onSubmit={handleAddGate}
+      />
+      <EditGateDialog 
+        open={editGateOpen}
+        onOpenChange={setEditGateOpen}
+        onSubmit={handleEditGate}
+        gate={selectedGate}
+      />
+      <AddClassDialog 
+        open={addClassOpen}
+        onOpenChange={setAddClassOpen}
+        onSubmit={handleAddClass}
+        teachers={teachersList}
+      />
+      <EditClassDialog 
+        open={editClassOpen}
+        onOpenChange={setEditClassOpen}
+        onSubmit={handleEditClass}
+        classData={selectedClass}
+        teachers={teachersList}
+      />
     </div>
   );
 }

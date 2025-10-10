@@ -13,11 +13,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "This is a protected route", user: req.user });
   });
 
-  // Role-based protected route example
-  app.get("/api/admin/users", isAuthenticated, hasRole("admin"), async (req, res) => {
-    res.json({ message: "Admin only route" });
-  });
-
   // Update parent NFC card - parent only route
   app.post("/api/parent/nfc-card", isAuthenticated, hasRole("parent"), async (req, res) => {
     try {

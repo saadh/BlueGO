@@ -115,7 +115,7 @@ export default function AddClassDialog({ open, onOpenChange, onSubmit, teachers 
                         <SelectItem value="none" disabled>No teachers available</SelectItem>
                       ) : (
                         teachers.map((teacher) => (
-                          <SelectItem key={teacher.id} value={teacher.name}>
+                          <SelectItem key={teacher.id} value={teacher.id}>
                             {teacher.name}
                           </SelectItem>
                         ))
