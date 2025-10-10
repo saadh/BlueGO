@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
@@ -23,7 +22,6 @@ export default function AuthPage() {
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerFirstName, setRegisterFirstName] = useState("");
   const [registerLastName, setRegisterLastName] = useState("");
-  const [registerRole, setRegisterRole] = useState<"parent" | "teacher" | "security" | "admin">("parent");
   const [useEmail, setUseEmail] = useState(true);
 
   // Redirect if already logged in
@@ -65,7 +63,7 @@ export default function AuthPage() {
       password: registerPassword,
       firstName: registerFirstName,
       lastName: registerLastName,
-      role: registerRole,
+      role: "parent",
     });
   };
 
@@ -158,21 +156,6 @@ export default function AuthPage() {
                           data-testid="input-last-name"
                         />
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select value={registerRole} onValueChange={(value: any) => setRegisterRole(value)}>
-                        <SelectTrigger data-testid="select-role">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="parent">Parent</SelectItem>
-                          <SelectItem value="teacher">Teacher</SelectItem>
-                          <SelectItem value="security">Security</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
 
                     <div className="space-y-2">

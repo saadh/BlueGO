@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
 
 interface AppHeaderProps {
   userName: string;
@@ -17,6 +18,7 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ userName, userRole }: AppHeaderProps) {
+  const { logoutMutation } = useAuth();
   const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
 
   return (
@@ -55,7 +57,12 @@ export default function AppHeader({ userName, userRole }: AppHeaderProps) {
               <DropdownMenuItem data-testid="menu-profile">Profile</DropdownMenuItem>
               <DropdownMenuItem data-testid="menu-settings">Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem data-testid="menu-logout">Log out</DropdownMenuItem>
+              <DropdownMenuItem 
+                data-testid="menu-logout"
+                onClick={() => logoutMutation.mutate()}
+              >
+                Log out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

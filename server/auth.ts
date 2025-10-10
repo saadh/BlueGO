@@ -97,6 +97,14 @@ export function setupAuth(app: Express) {
         });
       }
 
+      // Enforce parent role for public registration
+      // Other roles (teacher, security, admin) must be created by admins
+      if (role && role !== "parent") {
+        return res.status(403).json({ 
+          message: "Only parent accounts can be self-registered. Contact an administrator for other roles." 
+        });
+      }
+
       // Create user with hashed password
       const user = await storage.createUser({
         email: email || undefined,
@@ -104,7 +112,7 @@ export function setupAuth(app: Express) {
         password: await hashPassword(password),
         firstName,
         lastName,
-        role,
+        role: "parent", // Force parent role for all public registrations
       });
 
       // Auto-login after registration
