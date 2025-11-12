@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import CompactDismissalCard from "./CompactDismissalCard";
+import AnimatedDismissalCard from "./AnimatedDismissalCard";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,6 +12,7 @@ import { format } from "date-fns";
 interface DismissalCall {
   id: string;
   studentName: string;
+  studentAvatarUrl?: string | null;
   grade: string;
   class: string;
   parentName: string;
@@ -46,6 +47,7 @@ export default function ClassroomDisplay() {
   const calls: DismissalCall[] = dismissalsData.map((d: any) => ({
     id: d.id,
     studentName: d.studentName,
+    studentAvatarUrl: d.studentAvatarUrl,
     grade: d.studentGrade,
     class: d.studentClass,
     parentName: `${d.parentFirstName} ${d.parentLastName}`,
@@ -301,8 +303,20 @@ export default function ClassroomDisplay() {
           <div className="mb-6">
             <h2 className="text-xl font-bold mb-3 text-[#FF3547]">Active Dismissals</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {activeCalls.map((call) => (
-                <CompactDismissalCard key={call.id} {...call} />
+              {activeCalls.map((call, index) => (
+                <AnimatedDismissalCard
+                  key={call.id}
+                  studentName={call.studentName}
+                  avatarUrl={call.studentAvatarUrl}
+                  grade={call.grade}
+                  class={call.class}
+                  parentName={call.parentName}
+                  time={call.time}
+                  gate={call.gate}
+                  isNew={call.isNew}
+                  isCompleted={call.isCompleted}
+                  index={index}
+                />
               ))}
             </div>
           </div>
@@ -312,8 +326,20 @@ export default function ClassroomDisplay() {
           <div>
             <h2 className="text-xl font-bold mb-3 text-[#00C851]">Completed</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {completedCalls.map((call) => (
-                <CompactDismissalCard key={call.id} {...call} />
+              {completedCalls.map((call, index) => (
+                <AnimatedDismissalCard
+                  key={call.id}
+                  studentName={call.studentName}
+                  avatarUrl={call.studentAvatarUrl}
+                  grade={call.grade}
+                  class={call.class}
+                  parentName={call.parentName}
+                  time={call.time}
+                  gate={call.gate}
+                  isNew={call.isNew}
+                  isCompleted={call.isCompleted}
+                  index={index}
+                />
               ))}
             </div>
           </div>

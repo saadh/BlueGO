@@ -349,6 +349,7 @@ export class DbStorage implements IStorage {
         calledAt: dismissals.calledAt,
         completedAt: dismissals.completedAt,
         studentName: students.name,
+        studentAvatarUrl: students.avatarUrl,
         studentGrade: students.grade,
         studentClass: students.class,
         parentFirstName: users.firstName,
