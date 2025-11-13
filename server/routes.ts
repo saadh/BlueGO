@@ -183,9 +183,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public classes endpoint - accessible to authenticated users for form dropdowns
+  // Returns classes filtered by the user's organization
   app.get("/api/classes", isAuthenticated, async (req, res) => {
     try {
-      const classes = await storage.getAllClasses();
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "User must belong to an organization" });
+      }
+
+      const classes = await storage.getClassesByOrganization(req.user.organizationId);
       res.json(classes);
     } catch (error) {
       console.error('Error fetching classes:', error);
@@ -213,8 +218,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add a new student
   app.post("/api/students", isAuthenticated, hasRole("parent"), async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Parent must belong to an organization" });
+      }
+
+      // Fetch organization to get the name for the school field
+      const organization = await storage.getOrganizationById(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
       }
 
       const validation = insertStudentSchema.safeParse({
@@ -230,27 +241,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check usage limits for student creation
-      if (req.user.organizationId) {
-        const currentStudents = await storage.getStudentsByOrganization(req.user.organizationId);
-        const limitCheck = await checkUsageLimit(
-          req.user.organizationId,
-          "students",
-          currentStudents.length
-        );
+      const currentStudents = await storage.getStudentsByOrganization(req.user.organizationId);
+      const limitCheck = await checkUsageLimit(
+        req.user.organizationId,
+        "students",
+        currentStudents.length
+      );
 
-        if (!limitCheck.allowed) {
-          return res.status(403).json({
-            message: limitCheck.message,
-            currentCount: currentStudents.length,
-            limit: limitCheck.limit,
-          });
-        }
+      if (!limitCheck.allowed) {
+        return res.status(403).json({
+          message: limitCheck.message,
+          currentCount: currentStudents.length,
+          limit: limitCheck.limit,
+        });
       }
 
-      // Add organizationId from authenticated user
+      // Add organizationId and school name from authenticated user's organization
       const studentData = {
         ...validation.data,
-        organizationId: req.user.organizationId!,
+        organizationId: req.user.organizationId,
+        school: organization.name, // Auto-populate school from organization name
       };
 
       const student = await storage.createStudent(studentData);
@@ -438,7 +448,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Class Management
   app.get("/api/admin/classes", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
-      const classes = await storage.getAllClassesWithTeachers();
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
+      const classes = await storage.getClassesWithTeachersByOrganization(req.user.organizationId);
       res.json(classes);
     } catch (error) {
       console.error('Error fetching classes:', error);
@@ -448,6 +462,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/classes", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
+      // Fetch organization to get the name for the school field
+      const organization = await storage.getOrganizationById(req.user.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
       const validation = insertClassSchema.safeParse(req.body);
 
       if (!validation.success) {
@@ -457,10 +481,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Add organizationId from authenticated user
+      // Add organizationId and school name from authenticated user's organization
       const classDataWithOrg = {
         ...validation.data,
-        organizationId: req.user!.organizationId!,
+        organizationId: req.user.organizationId,
+        school: organization.name, // Auto-populate school from organization name
       };
 
       const classData = await storage.createClass(classDataWithOrg);
@@ -505,7 +530,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Gate Management
   app.get("/api/admin/gates", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
-      const gates = await storage.getAllGates();
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
+      const gates = await storage.getGatesByOrganization(req.user.organizationId);
       res.json(gates);
     } catch (error) {
       console.error('Error fetching gates:', error);

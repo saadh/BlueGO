@@ -271,6 +271,40 @@ export class DbStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
+  // Get classes filtered by organization
+  async getClassesByOrganization(organizationId: string): Promise<Class[]> {
+    return await db
+      .select()
+      .from(classes)
+      .where(eq(classes.organizationId, organizationId));
+  }
+
+  // Get classes with teachers filtered by organization
+  async getClassesWithTeachersByOrganization(organizationId: string): Promise<Array<Class & { teachers: User[] }>> {
+    const orgClasses = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.organizationId, organizationId));
+
+    const classesWithTeachers = await Promise.all(
+      orgClasses.map(async (cls) => {
+        // Get all teachers assigned to this class via junction table
+        const teacherAssignments = await db
+          .select({ user: users })
+          .from(teacherClasses)
+          .innerJoin(users, eq(teacherClasses.teacherId, users.id))
+          .where(eq(teacherClasses.classId, cls.id));
+
+        return {
+          ...cls,
+          teachers: teacherAssignments.map(t => t.user),
+        };
+      })
+    );
+
+    return classesWithTeachers;
+  }
+
   // Gate operations
   async getAllGates(): Promise<Gate[]> {
     return await db.select().from(gates);

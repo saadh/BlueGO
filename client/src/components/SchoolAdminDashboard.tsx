@@ -187,7 +187,7 @@ export default function SchoolAdminDashboard() {
   const addClassMutation = useMutation({
     mutationFn: async (data: any) => {
       const payload: any = {
-        school: "Riverside Elementary", // Default school
+        // School name is auto-populated by server from organization
         grade: data.grade,
         section: data.class,
       };
