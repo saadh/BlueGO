@@ -162,12 +162,14 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
       ) : students.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {students.map((student) => (
-            <StudentCard 
-              key={student.id} 
+            <StudentCard
+              key={student.id}
+              id={student.id}
               name={student.name}
               grade={student.grade}
               class={student.class}
               gender={student.gender}
+              avatarUrl={student.avatarUrl}
               nfcLinked={!!student.nfcCardId}
             />
           ))}

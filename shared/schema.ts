@@ -110,6 +110,7 @@ export const students = pgTable("students", {
   grade: text("grade").notNull(),
   class: text("class").notNull(), // Section (temporary, will use classId)
   gender: text("gender").notNull().$type<StudentGender>(),
+  avatarUrl: text("avatar_url"), // Custom avatar URL or preset avatar identifier
   nfcCardId: text("nfc_card_id"), // Student's individual NFC card
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
