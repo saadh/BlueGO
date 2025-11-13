@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Shield, Monitor, Settings } from "lucide-react";
+import { Loader2, Building2, BarChart3, Users, Shield } from "lucide-react";
 
-export default function SchoolLandingPage() {
+export default function PlatformLoginPage() {
   const { user, loginMutation } = useAuth();
   const [, setLocation] = useLocation();
-  
+
   // Login form state
   const [loginEmailOrPhone, setLoginEmailOrPhone] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -18,25 +18,12 @@ export default function SchoolLandingPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      // Redirect based on role
-      switch (user.role) {
-        case "parent":
-          setLocation("/");
-          break;
-        case "teacher":
-          setLocation("/classroom");
-          break;
-        case "security":
-          setLocation("/security");
-          break;
-        case "admin":
-          setLocation("/admin");
-          break;
-        case "superadmin":
-          setLocation("/superadmin");
-          break;
-        default:
-          setLocation("/");
+      // Only superadmins should use this login
+      if (user.role === "superadmin") {
+        setLocation("/superadmin");
+      } else {
+        // Redirect other roles to school portal
+        setLocation("/school");
       }
     }
   }, [user, setLocation]);
@@ -56,79 +43,76 @@ export default function SchoolLandingPage() {
         <div className="w-full max-w-md">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xl">B</span>
+              <div className="h-10 w-10 rounded-md bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                <span className="text-white font-bold text-xl">B</span>
               </div>
-              <h1 className="text-2xl font-bold">BlueGO School Portal</h1>
+              <h1 className="text-2xl font-bold">BlueGO Platform</h1>
             </div>
             <p className="text-muted-foreground">
-              Access the school staff portal for teachers, security, and administrators
+              Platform administrator access for managing organizations and system-wide settings
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>School Staff Login</CardTitle>
+              <CardTitle>Platform Administrator Login</CardTitle>
               <CardDescription>
-                Enter your credentials to access your assigned portal
+                Enter your superadmin credentials to access the platform dashboard
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email-phone">Email or Phone Number</Label>
+                  <Label htmlFor="platform-email-phone">Email or Phone Number</Label>
                   <Input
-                    id="login-email-phone"
+                    id="platform-email-phone"
                     type="text"
-                    placeholder="user@school.com or +1234567890"
+                    placeholder="admin@bluego.com or +1234567890"
                     value={loginEmailOrPhone}
                     onChange={(e) => setLoginEmailOrPhone(e.target.value)}
                     required
-                    data-testid="input-login-email-phone"
+                    data-testid="input-platform-email-phone"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="platform-password">Password</Label>
                   <Input
-                    id="login-password"
+                    id="platform-password"
                     type="password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
-                    data-testid="input-login-password"
+                    data-testid="input-platform-password"
                   />
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                   disabled={loginMutation.isPending}
-                  data-testid="button-login"
+                  data-testid="button-platform-login"
                 >
                   {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Login to School Portal
+                  Login to Platform
                 </Button>
               </form>
 
-              <div className="mt-6 p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> School staff accounts are created by administrators. 
-                  Contact your school admin if you need access.
+              <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <p className="text-sm text-purple-900 dark:text-purple-100">
+                  <strong>Superadmin Access Only:</strong> This portal is for platform administrators.
+                  School staff should use the{" "}
+                  <a href="/school" className="underline hover:text-purple-700">
+                    School Portal
+                  </a>.
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <div className="mt-6 text-center space-y-2">
+          <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               Are you a parent?{" "}
               <a href="/" className="text-primary hover:underline" data-testid="link-parent">
                 Access Parent Portal
-              </a>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Platform administrator?{" "}
-              <a href="/platform" className="text-purple-600 hover:underline" data-testid="link-platform">
-                Platform Login
               </a>
             </p>
           </div>
@@ -136,20 +120,38 @@ export default function SchoolLandingPage() {
       </div>
 
       {/* Right side - Hero */}
-      <div className="flex-1 bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center p-12 order-1 lg:order-2">
+      <div className="flex-1 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 flex items-center justify-center p-12 order-1 lg:order-2">
         <div className="max-w-md text-white">
-          <h1 className="text-4xl font-bold mb-6">School Staff Portal</h1>
+          <h1 className="text-4xl font-bold mb-6">Platform Dashboard</h1>
           <p className="text-lg mb-8">
-            Secure access to dismissal management tools for teachers, security personnel, and administrators.
+            Comprehensive platform management for the BlueGO multi-tenant SaaS system.
           </p>
           <div className="space-y-6">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                <Monitor className="h-6 w-6" />
+                <Building2 className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Teachers</h3>
-                <p className="text-white/90">Monitor real-time dismissal queues for your classroom</p>
+                <h3 className="font-semibold mb-1">Organization Management</h3>
+                <p className="text-white/90">Create, suspend, and manage school organizations</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Users className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">User Administration</h3>
+                <p className="text-white/90">Cross-organization user management and access control</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Analytics & Reporting</h3>
+                <p className="text-white/90">Platform metrics, revenue tracking, and growth analytics</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
@@ -157,17 +159,8 @@ export default function SchoolLandingPage() {
                 <Shield className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Security Staff</h3>
-                <p className="text-white/90">Scan NFC cards and manage dismissals at gates</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                <Settings className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Administrators</h3>
-                <p className="text-white/90">Manage users, classes, gates, and system settings</p>
+                <h3 className="font-semibold mb-1">Subscription Management</h3>
+                <p className="text-white/90">Manage plans, trials, billing cycles, and usage limits</p>
               </div>
             </div>
           </div>
