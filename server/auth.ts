@@ -36,6 +36,7 @@ export function setupAuth(app: Express) {
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET,
+    name: "bluego.sid", // Explicit session cookie name
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
@@ -43,8 +44,10 @@ export function setupAuth(app: Express) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
+    rolling: true, // Refresh cookie on each request
   };
 
   app.set("trust proxy", 1);
@@ -164,6 +167,8 @@ export function setupAuth(app: Express) {
           }
 
           console.log("💾 Session saved successfully");
+          console.log("🍪 Session ID to send:", req.sessionID);
+          console.log("🍪 Set-Cookie header:", res.getHeader('set-cookie'));
 
           // Don't send password to client
           const { password: _, ...userWithoutPassword } = user;
