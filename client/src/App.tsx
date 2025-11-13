@@ -24,7 +24,7 @@ function Router() {
       <Route path="/platform" component={PlatformLoginPage} />
       <ProtectedRoute path="/parent" component={ParentPage} allowedRoles={["parent"]} />
       <ProtectedRoute path="/security" component={SecurityPage} allowedRoles={["security"]} />
-      <ProtectedRoute path="/classroom" component={ClassroomPage} allowedRoles={["teacher"]} />
+      <ProtectedRoute path="/classroom" component={ClassroomPage} allowedRoles={["teacher", "admin"]} />
       <ProtectedRoute path="/admin" component={AdminPage} allowedRoles={["admin"]} />
       <ProtectedRoute path="/superadmin/users" component={SuperAdminUsersPage} allowedRoles={["superadmin"]} />
       <ProtectedRoute path="/superadmin" component={SuperAdminPage} allowedRoles={["superadmin"]} />

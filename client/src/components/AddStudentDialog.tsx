@@ -32,7 +32,6 @@ import { Button } from "@/components/ui/button";
 const studentSchema = z.object({
   name: z.string().min(1, "Name is required"),
   studentId: z.string().min(1, "Student ID is required"),
-  school: z.string().min(1, "School is required"),
   grade: z.string().min(1, "Grade is required"),
   class: z.string().min(1, "Class is required"),
   gender: z.enum(["male", "female"]),
@@ -50,49 +49,29 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
     defaultValues: {
       name: "",
       studentId: "",
-      school: "",
       grade: "",
       class: "",
       gender: "male",
     },
   });
 
-  // Fetch all classes from database
+  // Fetch classes from database (now filtered by user's organization)
   const { data: classes = [] } = useQuery<Class[]>({
     queryKey: ["/api/classes"],
   });
 
-  // Watch form values for dynamic filtering
-  const selectedSchool = form.watch("school");
+  // Watch form value for dynamic filtering
   const selectedGrade = form.watch("grade");
 
-  // Extract unique values for dropdowns
-  const schools = Array.from(new Set(classes.map(c => c.school))).sort();
-  
-  // Filter grades based on selected school
-  const grades = Array.from(new Set(
-    classes
-      .filter(c => !selectedSchool || c.school === selectedSchool)
-      .map(c => c.grade)
-  )).sort();
-  
-  // Get unique classes (sections) for selected school and grade
+  // Extract unique grades from classes
+  const grades = Array.from(new Set(classes.map(c => c.grade))).sort();
+
+  // Get unique classes (sections) for selected grade
   const availableClasses = classes
-    .filter(c => 
-      (!selectedSchool || c.school === selectedSchool) &&
-      (!selectedGrade || c.grade === selectedGrade)
-    )
+    .filter(c => !selectedGrade || c.grade === selectedGrade)
     .map(c => c.section)
     .filter((value, index, self) => self.indexOf(value) === index)
     .sort();
-
-  // Reset grade and class when school changes
-  useEffect(() => {
-    if (selectedSchool) {
-      form.setValue("grade", "");
-      form.setValue("class", "");
-    }
-  }, [selectedSchool]);
 
   // Reset class when grade changes
   useEffect(() => {
@@ -139,36 +118,6 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                   <FormControl>
                     <Input placeholder="Government ID, Passport, or School ID" {...field} data-testid="input-student-id" />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="school"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>School</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-school">
-                        <SelectValue placeholder="Select school" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {schools.length > 0 ? (
-                        schools.map((school) => (
-                          <SelectItem key={school} value={school}>
-                            {school}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-schools" disabled>
-                          No schools available
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -225,7 +174,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                           ))
                         ) : (
                           <SelectItem value="no-classes" disabled>
-                            {selectedSchool && selectedGrade ? "No classes available" : "Select school and grade first"}
+                            {selectedGrade ? "No classes available" : "Select grade first"}
                           </SelectItem>
                         )}
                       </SelectContent>
