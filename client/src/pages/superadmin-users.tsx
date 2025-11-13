@@ -166,24 +166,24 @@ export default function SuperAdminUsersPage() {
                 />
               </div>
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select value={roleFilter || "all"} onValueChange={(value) => setRoleFilter(value === "all" ? "" : value)}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="All Roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Roles</SelectItem>
+                <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="teacher">Teacher</SelectItem>
                 <SelectItem value="security">Security</SelectItem>
                 <SelectItem value="parent">Parent</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={suspendedFilter} onValueChange={setSuspendedFilter}>
+            <Select value={suspendedFilter || "all"} onValueChange={(value) => setSuspendedFilter(value === "all" ? "" : value)}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="false">Active</SelectItem>
                 <SelectItem value="true">Suspended</SelectItem>
               </SelectContent>

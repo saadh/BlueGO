@@ -197,6 +197,7 @@ export class AuditLogger {
     req: Request,
     userId: string,
     userName: string,
+    organizationName: string,
     organizationId: string
   ) {
     await this.logFromRequest(
@@ -205,7 +206,8 @@ export class AuditLogger {
       "user",
       userId,
       userName,
-      organizationId
+      organizationId,
+      { organizationName }
     );
   }
 

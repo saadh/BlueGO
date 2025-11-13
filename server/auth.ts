@@ -34,6 +34,11 @@ export function setupAuth(app: Express) {
     throw new Error("SESSION_SECRET must be set");
   }
 
+  // Check if running on localhost (even in production mode)
+  const isLocalhost = process.env.REPL_ID !== undefined ||
+                      process.env.PORT === '5000' ||
+                      process.env.PORT === '3000';
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET,
     name: "bluego.sid", // Explicit session cookie name
@@ -42,13 +47,21 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      // Only use secure cookies on HTTPS in production (not on localhost/Replit)
+      secure: process.env.NODE_ENV === "production" && !isLocalhost,
+      sameSite: process.env.NODE_ENV === "production" && !isLocalhost ? "strict" : "lax",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
     rolling: true, // Refresh cookie on each request
   };
+
+  console.log("🔧 Session config:", {
+    nodeEnv: process.env.NODE_ENV,
+    isLocalhost,
+    secureCookie: sessionSettings.cookie?.secure,
+    sameSite: sessionSettings.cookie?.sameSite,
+  });
 
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
