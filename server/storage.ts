@@ -7,7 +7,7 @@ import {
   type TeacherClass, type InsertTeacherClass,
   users, students, classes, gates, dismissals, teacherClasses
 } from "@shared/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, or, inArray } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { db } from "./db";
