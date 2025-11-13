@@ -3,11 +3,13 @@ import AnimatedDismissalCard from "./AnimatedDismissalCard";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useWebSocket, WSEventType } from "@/hooks/use-websocket";
+import { playNotificationSound, isSoundEnabled, toggleSoundNotifications } from "@/lib/sounds";
 
 interface DismissalCall {
   id: string;
@@ -37,11 +39,16 @@ export default function ClassroomDisplay() {
     queryKey: ["/api/teacher/classes"],
   });
 
-  // Fetch dismissals from API (uses default fetcher with polling)
+  // Fetch dismissals from API (no polling, using WebSocket for real-time updates)
   const { data: dismissalsData = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teacher/dismissals"],
-    refetchInterval: 5000, // Poll every 5 seconds for new dismissals
   });
+
+  // WebSocket connection for real-time updates
+  const { isConnected, on } = useWebSocket();
+
+  // Sound toggle state
+  const [soundEnabled, setSoundEnabled] = useState(isSoundEnabled());
 
   // Transform API data to match expected format
   const calls: DismissalCall[] = dismissalsData.map((d: any) => ({
@@ -86,6 +93,52 @@ export default function ClassroomDisplay() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Listen for real-time dismissal events via WebSocket
+  useEffect(() => {
+    const unsubscribeCreated = on(WSEventType.DISMISSAL_CREATED, (data) => {
+      console.log("New dismissal received via WebSocket:", data);
+
+      // Play sound notification
+      if (soundEnabled) {
+        playNotificationSound();
+      }
+
+      // Show toast notification
+      toast({
+        title: "New Dismissal",
+        description: `${data.studentName} is ready for pickup at ${data.gateName}`,
+      });
+
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/dismissals"] });
+    });
+
+    const unsubscribeUpdated = on(WSEventType.DISMISSAL_UPDATED, () => {
+      // Refresh dismissals list when updated
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/dismissals"] });
+    });
+
+    const unsubscribeCompleted = on(WSEventType.DISMISSAL_COMPLETED, () => {
+      // Refresh dismissals list when completed
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/dismissals"] });
+    });
+
+    return () => {
+      unsubscribeCreated();
+      unsubscribeUpdated();
+      unsubscribeCompleted();
+    };
+  }, [on, soundEnabled, toast]);
+
+  const handleToggleSound = () => {
+    const newState = toggleSoundNotifications();
+    setSoundEnabled(newState);
+    toast({
+      title: newState ? "Sound Enabled" : "Sound Muted",
+      description: newState ? "You'll hear notifications for new dismissals" : "Sound notifications are muted",
+    });
+  };
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -284,10 +337,35 @@ export default function ClassroomDisplay() {
               <div className="text-2xl font-bold" data-testid="text-current-time">
                 {currentTime.toLocaleTimeString()}
               </div>
-              <p className="text-xs text-muted-foreground">Live Updates</p>
+              <div className="flex items-center gap-1 justify-end">
+                {isConnected ? (
+                  <>
+                    <Wifi className="h-3 w-3 text-[#00C851]" />
+                    <p className="text-xs text-[#00C851]">Live</p>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3 text-[#FF3547]" />
+                    <p className="text-xs text-[#FF3547]">Connecting...</p>
+                  </>
+                )}
+              </div>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleToggleSound}
+              title={soundEnabled ? "Mute notifications" : "Enable sound notifications"}
+              data-testid="button-toggle-sound"
+            >
+              {soundEnabled ? (
+                <Volume2 className="h-4 w-4" />
+              ) : (
+                <VolumeX className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
               size="icon"
               onClick={() => logoutMutation.mutate()}
               disabled={logoutMutation.isPending}

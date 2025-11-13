@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hasRole, hashPassword } from "./auth";
 import { insertStudentSchema, insertClassSchema, insertGateSchema, insertUserSchema } from "@shared/schema";
+import { wsManager } from "./websocket";
 
 // Helper function to normalize NFC card ID format
 function normalizeNFCCardId(nfcCardId: string): string {
@@ -106,6 +107,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           calledAt: new Date(),
         });
         dismissals.push(dismissal);
+
+        // Notify via WebSocket about new dismissal
+        const gate = await storage.getGateById(gateId);
+        wsManager.notifyDismissalCreated({
+          id: dismissal.id,
+          studentId: child.id,
+          studentName: child.name,
+          studentAvatarUrl: child.avatarUrl,
+          studentGrade: child.grade,
+          studentClass: child.class,
+          parentId: parent.id,
+          parentFirstName: parent.firstName,
+          parentLastName: parent.lastName,
+          gateName: gate?.name || "Unknown",
+          status: dismissal.status,
+          calledAt: dismissal.calledAt,
+        });
       }
 
       res.status(201).json({
@@ -530,9 +548,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/fix-student-classes", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
       const result = await storage.fixStudentClassIds();
-      res.json({ 
+      res.json({
         message: `Updated ${result.updated} students, ${result.failed} students have no matching class`,
-        ...result 
+        ...result
       });
     } catch (error) {
       console.error('Error fixing student classIds:', error);
@@ -540,7 +558,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Statistics endpoints - accessible to teachers and admins
+  app.get("/api/stats/dismissals", isAuthenticated, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+
+      const stats = await storage.getDismissalStatistics(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching dismissal statistics:', error);
+      res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
+  app.get("/api/stats/gates", isAuthenticated, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+
+      const stats = await storage.getGateStatistics(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching gate statistics:', error);
+      res.status(500).json({ message: "Failed to fetch gate statistics" });
+    }
+  });
+
+  app.get("/api/stats/hourly", isAuthenticated, async (req, res) => {
+    try {
+      const { date } = req.query;
+
+      const stats = await storage.getDismissalsByHour(
+        date ? new Date(date as string) : undefined
+      );
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching hourly statistics:', error);
+      res.status(500).json({ message: "Failed to fetch hourly statistics" });
+    }
+  });
+
   const httpServer = createServer(app);
+
+  // Initialize WebSocket server
+  wsManager.initialize(httpServer);
 
   return httpServer;
 }

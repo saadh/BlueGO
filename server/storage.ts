@@ -65,7 +65,12 @@ export interface IStorage {
   createTeacherClassAssignment(assignment: InsertTeacherClass): Promise<TeacherClass>;
   deleteTeacherClassAssignment(teacherId: string, classId: string): Promise<boolean>;
   deleteAllTeacherClassAssignments(teacherId: string): Promise<boolean>;
-  
+
+  // Statistics operations
+  getDismissalStatistics(startDate?: Date, endDate?: Date): Promise<any>;
+  getGateStatistics(startDate?: Date, endDate?: Date): Promise<any>;
+  getDismissalsByHour(date?: Date): Promise<any>;
+
   sessionStore: session.Store;
 }
 
@@ -438,7 +443,7 @@ export class DbStorage implements IStorage {
     const allStudents = await db.select().from(students);
     let updated = 0;
     let failed = 0;
-    
+
     for (const student of allStudents) {
       const matchingClass = await db
         .select()
@@ -451,7 +456,7 @@ export class DbStorage implements IStorage {
           )
         )
         .limit(1);
-      
+
       if (matchingClass.length > 0 && student.classId !== matchingClass[0].id) {
         await db
           .update(students)
@@ -467,8 +472,127 @@ export class DbStorage implements IStorage {
         failed++;
       }
     }
-    
+
     return { updated, failed };
+  }
+
+  // Get dismissal statistics
+  async getDismissalStatistics(startDate?: Date, endDate?: Date): Promise<any> {
+    const start = startDate || new Date(new Date().setHours(0, 0, 0, 0));
+    const end = endDate || new Date(new Date().setHours(23, 59, 59, 999));
+
+    // Get all dismissals in date range
+    const allDismissals = await db
+      .select()
+      .from(dismissals)
+      .where(
+        and(
+          dismissals.scannedAt ? dismissals.scannedAt >= start : undefined,
+          dismissals.scannedAt ? dismissals.scannedAt <= end : undefined
+        ) as any
+      );
+
+    // Calculate statistics
+    const totalDismissals = allDismissals.length;
+    const completedDismissals = allDismissals.filter(d => d.status === "completed").length;
+    const pendingDismissals = allDismissals.filter(d => d.status === "called" || d.status === "in_progress").length;
+
+    // Calculate average pickup time (from called to completed)
+    const completedWithTime = allDismissals.filter(
+      d => d.status === "completed" && d.calledAt && d.completedAt
+    );
+
+    let averagePickupTime = 0;
+    if (completedWithTime.length > 0) {
+      const totalTime = completedWithTime.reduce((sum, d) => {
+        const called = new Date(d.calledAt!).getTime();
+        const completed = new Date(d.completedAt!).getTime();
+        return sum + (completed - called);
+      }, 0);
+      averagePickupTime = totalTime / completedWithTime.length / 1000 / 60; // Convert to minutes
+    }
+
+    return {
+      totalDismissals,
+      completedDismissals,
+      pendingDismissals,
+      averagePickupTimeMinutes: Math.round(averagePickupTime * 10) / 10,
+      completionRate: totalDismissals > 0 ? Math.round((completedDismissals / totalDismissals) * 100) : 0,
+    };
+  }
+
+  // Get gate statistics
+  async getGateStatistics(startDate?: Date, endDate?: Date): Promise<any> {
+    const start = startDate || new Date(new Date().setHours(0, 0, 0, 0));
+    const end = endDate || new Date(new Date().setHours(23, 59, 59, 999));
+
+    // Get dismissals by gate
+    const dismissalsByGate = await db
+      .select({
+        gateId: dismissals.gateId,
+        gateName: gates.name,
+        count: dismissals.id,
+      })
+      .from(dismissals)
+      .leftJoin(gates, eq(dismissals.gateId, gates.id))
+      .where(
+        and(
+          dismissals.scannedAt ? dismissals.scannedAt >= start : undefined,
+          dismissals.scannedAt ? dismissals.scannedAt <= end : undefined
+        ) as any
+      );
+
+    // Group by gate
+    const gateStats = dismissalsByGate.reduce((acc: any, row: any) => {
+      const gateName = row.gateName || "Unknown";
+      if (!acc[gateName]) {
+        acc[gateName] = 0;
+      }
+      acc[gateName]++;
+      return acc;
+    }, {});
+
+    return Object.entries(gateStats)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a: any, b: any) => b.count - a.count);
+  }
+
+  // Get dismissals by hour
+  async getDismissalsByHour(date?: Date): Promise<any> {
+    const targetDate = date || new Date();
+    const start = new Date(targetDate.setHours(0, 0, 0, 0));
+    const end = new Date(targetDate.setHours(23, 59, 59, 999));
+
+    const allDismissals = await db
+      .select({
+        scannedAt: dismissals.scannedAt,
+      })
+      .from(dismissals)
+      .where(
+        and(
+          dismissals.scannedAt ? dismissals.scannedAt >= start : undefined,
+          dismissals.scannedAt ? dismissals.scannedAt <= end : undefined
+        ) as any
+      );
+
+    // Group by hour
+    const hourlyStats: any = {};
+    for (let hour = 0; hour < 24; hour++) {
+      hourlyStats[hour] = 0;
+    }
+
+    allDismissals.forEach((d: any) => {
+      if (d.scannedAt) {
+        const hour = new Date(d.scannedAt).getHours();
+        hourlyStats[hour]++;
+      }
+    });
+
+    return Object.entries(hourlyStats).map(([hour, count]) => ({
+      hour: parseInt(hour),
+      count,
+      label: `${hour}:00`,
+    }));
   }
 }
 
