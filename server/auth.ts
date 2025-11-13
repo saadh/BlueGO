@@ -42,6 +42,7 @@ export function setupAuth(app: Express) {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
   };
@@ -134,12 +135,18 @@ export function setupAuth(app: Express) {
       if (!user) {
         return res.status(401).json({ message: info?.message || "Invalid credentials" });
       }
-      
+
       req.login(user, (err) => {
         if (err) return next(err);
-        // Don't send password to client
-        const { password: _, ...userWithoutPassword } = user;
-        res.status(200).json(userWithoutPassword);
+
+        // Explicitly save the session to ensure it persists
+        req.session.save((err) => {
+          if (err) return next(err);
+
+          // Don't send password to client
+          const { password: _, ...userWithoutPassword } = user;
+          res.status(200).json(userWithoutPassword);
+        });
       });
     })(req, res, next);
   });

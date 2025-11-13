@@ -44,6 +44,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     retry: false,
+    queryFn: async () => {
+      const res = await fetch("/api/user", {
+        credentials: "include",
+      });
+
+      // Return null if not authenticated instead of throwing
+      if (res.status === 401) {
+        return null;
+      }
+
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+
+      return await res.json();
+    },
   });
 
   const loginMutation = useMutation({
