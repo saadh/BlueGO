@@ -3,6 +3,7 @@ import { db } from "./db";
 import { organizations, users, insertOrganizationSchema, Organization } from "@shared/schema";
 import { eq, desc, and, or, like, count, sql } from "drizzle-orm";
 import { isAuthenticated, hasRole } from "./auth";
+import { AuditLogger } from "./audit-logger";
 
 /**
  * Organization management APIs for superadmin
@@ -182,6 +183,12 @@ export function setupOrganizationRoutes(app: Express) {
           })
           .returning();
 
+        // Log audit event
+        await AuditLogger.logOrganizationCreated(req, newOrg.id, newOrg.name, {
+          plan: newOrg.subscriptionPlan,
+          trialDays: 30,
+        });
+
         res.status(201).json(newOrg);
       } catch (error: any) {
         console.error("Error creating organization:", error);
@@ -276,6 +283,14 @@ export function setupOrganizationRoutes(app: Express) {
           .where(eq(organizations.id, id))
           .returning();
 
+        // Log audit event
+        await AuditLogger.logOrganizationSuspended(
+          req,
+          updatedOrg.id,
+          updatedOrg.name,
+          reason || "Suspended by administrator"
+        );
+
         res.json(updatedOrg);
       } catch (error) {
         console.error("Error suspending organization:", error);
@@ -317,6 +332,9 @@ export function setupOrganizationRoutes(app: Express) {
           })
           .where(eq(organizations.id, id))
           .returning();
+
+        // Log audit event
+        await AuditLogger.logOrganizationActivated(req, updatedOrg.id, updatedOrg.name);
 
         res.json(updatedOrg);
       } catch (error) {
@@ -453,6 +471,9 @@ export function setupOrganizationRoutes(app: Express) {
           .where(eq(organizations.id, id))
           .returning();
 
+        // Log audit event
+        await AuditLogger.logTrialExtended(req, updatedOrg.id, updatedOrg.name, days);
+
         res.json(updatedOrg);
       } catch (error) {
         console.error("Error extending trial:", error);
@@ -531,6 +552,15 @@ export function setupOrganizationRoutes(app: Express) {
           .where(eq(organizations.id, id))
           .returning();
 
+        // Log audit event
+        await AuditLogger.logSubscriptionUpgraded(
+          req,
+          updatedOrg.id,
+          updatedOrg.name,
+          planSlug,
+          billingCycle
+        );
+
         res.json(updatedOrg);
       } catch (error) {
         console.error("Error upgrading organization:", error);
@@ -587,6 +617,14 @@ export function setupOrganizationRoutes(app: Express) {
           })
           .where(eq(organizations.id, id))
           .returning();
+
+        // Log audit event
+        await AuditLogger.logSubscriptionRenewed(
+          req,
+          updatedOrg.id,
+          updatedOrg.name,
+          billingCycle
+        );
 
         res.json(updatedOrg);
       } catch (error) {

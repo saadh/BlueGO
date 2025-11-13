@@ -173,6 +173,27 @@ CREATE INDEX IF NOT EXISTS dismissal_gate_idx ON dismissals(gate_id);
 CREATE INDEX IF NOT EXISTS dismissal_scanned_by_idx ON dismissals(scanned_by_user_id);
 CREATE INDEX IF NOT EXISTS dismissal_status_idx ON dismissals(status);
 CREATE INDEX IF NOT EXISTS dismissal_scanned_at_idx ON dismissals(scanned_at);
+
+-- Audit logs table (for tracking superadmin actions)
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id VARCHAR,
+  target_name TEXT,
+  organization_id VARCHAR REFERENCES organizations(id) ON DELETE CASCADE,
+  metadata JSONB,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS audit_user_idx ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS audit_action_idx ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS audit_target_idx ON audit_logs(target_type, target_id);
+CREATE INDEX IF NOT EXISTS audit_organization_idx ON audit_logs(organization_id);
+CREATE INDEX IF NOT EXISTS audit_created_at_idx ON audit_logs(created_at);
 `;
 
 export async function initializeDatabase() {

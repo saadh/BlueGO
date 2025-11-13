@@ -316,3 +316,46 @@ export const insertDismissalSchema = createInsertSchema(dismissals).omit({
 
 export type InsertDismissal = z.infer<typeof insertDismissalSchema>;
 export type Dismissal = typeof dismissals.$inferSelect;
+
+// Audit log actions
+export const auditActions = [
+  "organization.created",
+  "organization.updated",
+  "organization.suspended",
+  "organization.activated",
+  "organization.deleted",
+  "user.created",
+  "user.updated",
+  "user.suspended",
+  "user.unsuspended",
+  "user.deleted",
+  "subscription.upgraded",
+  "subscription.renewed",
+  "subscription.cancelled",
+  "trial.extended",
+  "admin.created",
+] as const;
+export type AuditAction = typeof auditActions[number];
+
+// Audit logs table - tracks all superadmin actions
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: text("action").notNull().$type<AuditAction>(),
+  targetType: text("target_type").notNull(), // organization, user, subscription, etc.
+  targetId: varchar("target_id"), // ID of the affected resource
+  targetName: text("target_name"), // Name of the affected resource for easy reference
+  organizationId: varchar("organization_id").references(() => organizations.id, { onDelete: "cascade" }), // Organization context
+  metadata: jsonb("metadata").$type<Record<string, any>>(), // Additional contextual data
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("audit_user_idx").on(table.userId),
+  actionIdx: index("audit_action_idx").on(table.action),
+  targetIdx: index("audit_target_idx").on(table.targetType, table.targetId),
+  organizationIdx: index("audit_organization_idx").on(table.organizationId),
+  createdAtIdx: index("audit_created_at_idx").on(table.createdAt),
+}));
+
+export type AuditLog = typeof auditLogs.$inferSelect;

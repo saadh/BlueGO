@@ -3,6 +3,7 @@ import { db } from "./db";
 import { users, organizations } from "@shared/schema";
 import { eq, desc, and, or, like, count, sql, isNull } from "drizzle-orm";
 import { isAuthenticated, hasRole, hashPassword } from "./auth";
+import { AuditLogger } from "./audit-logger";
 
 /**
  * Cross-organization user management APIs for superadmin
@@ -194,6 +195,15 @@ export function setupUserManagementRoutes(app: Express) {
           .where(eq(users.id, id))
           .returning();
 
+        // Log audit event
+        await AuditLogger.logUserSuspended(
+          req,
+          updatedUser.id,
+          `${updatedUser.firstName} ${updatedUser.lastName}`,
+          reason || "Suspended by platform administrator",
+          updatedUser.organizationId
+        );
+
         const { password: _, ...userWithoutPassword } = updatedUser;
         res.json(userWithoutPassword);
       } catch (error) {
@@ -236,6 +246,14 @@ export function setupUserManagementRoutes(app: Express) {
           })
           .where(eq(users.id, id))
           .returning();
+
+        // Log audit event
+        await AuditLogger.logUserUnsuspended(
+          req,
+          updatedUser.id,
+          `${updatedUser.firstName} ${updatedUser.lastName}`,
+          updatedUser.organizationId
+        );
 
         const { password: _, ...userWithoutPassword } = updatedUser;
         res.json(userWithoutPassword);
@@ -320,6 +338,15 @@ export function setupUserManagementRoutes(app: Express) {
             role: "admin",
           })
           .returning();
+
+        // Log audit event
+        await AuditLogger.logAdminCreated(
+          req,
+          newUser.id,
+          `${newUser.firstName} ${newUser.lastName}`,
+          org.name,
+          orgId
+        );
 
         const { password: _, ...userWithoutPassword } = newUser;
         res.status(201).json(userWithoutPassword);

@@ -7,6 +7,7 @@ import { wsManager } from "./websocket";
 import { tenantIsolationMiddleware, subscriptionCheckMiddleware } from "./tenant-middleware";
 import { setupOrganizationRoutes } from "./organizations-api";
 import { setupUserManagementRoutes } from "./users-api";
+import { setupAnalyticsRoutes } from "./analytics-api";
 import { checkUsageLimit } from "./tenant-queries";
 
 // Helper function to normalize NFC card ID format
@@ -678,6 +679,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup user management routes for superadmin
   setupUserManagementRoutes(app);
+
+  // Setup analytics and reporting routes for superadmin
+  setupAnalyticsRoutes(app);
 
   const httpServer = createServer(app);
 
