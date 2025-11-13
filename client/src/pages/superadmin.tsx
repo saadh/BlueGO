@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Users, AlertCircle, CheckCircle, XCircle, Plus, Search } from "lucide-react";
+import { Building2, Users, AlertCircle, CheckCircle, XCircle, Plus, Search, BarChart3 } from "lucide-react";
+import { Link } from "wouter";
 
 type SubscriptionStatus = "active" | "suspended" | "cancelled" | "trial" | "expired";
 
@@ -55,8 +56,20 @@ export default function SuperAdminDashboard() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [createAdminDialogOpen, setCreateAdminDialogOpen] = useState(false);
+  const [selectedOrgForAdmin, setSelectedOrgForAdmin] = useState<Organization | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch platform statistics
+  const { data: stats } = useQuery({
+    queryKey: ["/api/superadmin/stats"],
+    queryFn: async () => {
+      const response = await fetch("/api/superadmin/stats");
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
+    },
+  });
 
   // Fetch organizations
   const { data, isLoading } = useQuery<OrganizationsResponse>({
@@ -142,11 +155,77 @@ export default function SuperAdminDashboard() {
           <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
           <p className="text-muted-foreground">Manage organizations and subscriptions</p>
         </div>
-        <CreateOrganizationDialog
-          open={isCreateDialogOpen}
-          onOpenChange={setIsCreateDialogOpen}
-        />
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/superadmin/users">
+              <Users className="h-4 w-4 mr-2" />
+              Manage Users
+            </Link>
+          </Button>
+          <CreateOrganizationDialog
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+          />
+        </div>
       </div>
+
+      {/* Statistics Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Total Organizations</CardDescription>
+              <CardTitle className="text-3xl">
+                {stats.organizations.total}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                {stats.organizations.active} active
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Total Users</CardDescription>
+              <CardTitle className="text-3xl">
+                {stats.users.total}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                {stats.users.suspended} suspended
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Admins</CardDescription>
+              <CardTitle className="text-3xl">
+                {stats.users.byRole.find((r: any) => r.role === "admin")?.count || 0}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                School administrators
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Parents</CardDescription>
+              <CardTitle className="text-3xl">
+                {stats.users.byRole.find((r: any) => r.role === "parent")?.count || 0}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Active parent accounts
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -269,8 +348,16 @@ export default function SuperAdminDashboard() {
                         Activate
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={`/superadmin/organizations/${org.id}`}>View Details</a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedOrgForAdmin(org);
+                        setCreateAdminDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Admin
                     </Button>
                   </div>
                 </CardContent>
@@ -302,6 +389,13 @@ export default function SuperAdminDashboard() {
           )}
         </>
       )}
+
+      {/* Create Admin Dialog */}
+      <CreateAdminDialog
+        open={createAdminDialogOpen}
+        onOpenChange={setCreateAdminDialogOpen}
+        organization={selectedOrgForAdmin}
+      />
     </div>
   );
 }
@@ -481,6 +575,180 @@ function CreateOrganizationDialog({
             </Button>
             <Button type="submit" disabled={createMutation.isPending}>
               {createMutation.isPending ? "Creating..." : "Create Organization"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateAdminDialog({
+  open,
+  onOpenChange,
+  organization,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  organization: Organization | null;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    email: "",
+    phone: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      if (!organization) throw new Error("No organization selected");
+
+      const response = await fetch(
+        `/api/superadmin/organizations/${organization.id}/create-admin`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create admin user");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/organizations"] });
+      toast({
+        title: "Admin User Created",
+        description: "The admin user has been created successfully.",
+      });
+      onOpenChange(false);
+      setFormData({
+        email: "",
+        phone: "",
+        password: "",
+        firstName: "",
+        lastName: "",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate that at least email or phone is provided
+    if (!formData.email && !formData.phone) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide either an email or phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createMutation.mutate(formData);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create Admin User</DialogTitle>
+            <DialogDescription>
+              Create an admin user for {organization?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, firstName: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name *</Label>
+                <Input
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="admin@example.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                Email or phone is required
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                placeholder="+1234567890"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                required
+                minLength={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                Minimum 6 characters
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create Admin"}
             </Button>
           </DialogFooter>
         </form>

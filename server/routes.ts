@@ -6,6 +6,7 @@ import { insertStudentSchema, insertClassSchema, insertGateSchema, insertUserSch
 import { wsManager } from "./websocket";
 import { tenantIsolationMiddleware, subscriptionCheckMiddleware } from "./tenant-middleware";
 import { setupOrganizationRoutes } from "./organizations-api";
+import { setupUserManagementRoutes } from "./users-api";
 
 // Helper function to normalize NFC card ID format
 function normalizeNFCCardId(nfcCardId: string): string {
@@ -618,6 +619,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup organization management routes for superadmin
   setupOrganizationRoutes(app);
+
+  // Setup user management routes for superadmin
+  setupUserManagementRoutes(app);
 
   const httpServer = createServer(app);
 
