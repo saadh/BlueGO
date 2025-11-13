@@ -409,4 +409,190 @@ export function setupOrganizationRoutes(app: Express) {
       }
     }
   );
+
+  /**
+   * POST /api/superadmin/organizations/:id/extend-trial
+   * Extend trial period for an organization
+   */
+  app.post(
+    "/api/superadmin/organizations/:id/extend-trial",
+    isAuthenticated,
+    hasRole("superadmin"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { days } = req.body;
+
+        if (!days || days <= 0) {
+          return res.status(400).json({
+            message: "Please provide a valid number of days to extend",
+          });
+        }
+
+        const [org] = await db
+          .select()
+          .from(organizations)
+          .where(eq(organizations.id, id))
+          .limit(1);
+
+        if (!org) {
+          return res.status(404).json({ message: "Organization not found" });
+        }
+
+        // Calculate new trial end date
+        const currentTrialEnd = org.trialEndsAt || new Date();
+        const newTrialEnd = new Date(currentTrialEnd);
+        newTrialEnd.setDate(newTrialEnd.getDate() + days);
+
+        const [updatedOrg] = await db
+          .update(organizations)
+          .set({
+            trialEndsAt: newTrialEnd,
+            updatedAt: new Date(),
+          })
+          .where(eq(organizations.id, id))
+          .returning();
+
+        res.json(updatedOrg);
+      } catch (error) {
+        console.error("Error extending trial:", error);
+        res.status(500).json({ message: "Failed to extend trial" });
+      }
+    }
+  );
+
+  /**
+   * POST /api/superadmin/organizations/:id/upgrade
+   * Upgrade organization to a paid plan
+   */
+  app.post(
+    "/api/superadmin/organizations/:id/upgrade",
+    isAuthenticated,
+    hasRole("superadmin"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { planSlug, billingCycle } = req.body;
+
+        if (!planSlug || !billingCycle) {
+          return res.status(400).json({
+            message: "Plan slug and billing cycle are required",
+          });
+        }
+
+        const [org] = await db
+          .select()
+          .from(organizations)
+          .where(eq(organizations.id, id))
+          .limit(1);
+
+        if (!org) {
+          return res.status(404).json({ message: "Organization not found" });
+        }
+
+        // Get the plan details
+        const { subscriptionPlans } = await import("@shared/schema");
+        const [plan] = await db
+          .select()
+          .from(subscriptionPlans)
+          .where(eq(subscriptionPlans.slug, planSlug))
+          .limit(1);
+
+        if (!plan) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        // Calculate subscription end date based on billing cycle
+        const subscriptionStartDate = new Date();
+        const subscriptionEndDate = new Date();
+
+        if (billingCycle === "monthly") {
+          subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+        } else if (billingCycle === "yearly") {
+          subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
+        } else {
+          return res.status(400).json({
+            message: "Invalid billing cycle. Must be 'monthly' or 'yearly'",
+          });
+        }
+
+        const [updatedOrg] = await db
+          .update(organizations)
+          .set({
+            subscriptionStatus: "active",
+            subscriptionPlan: planSlug,
+            subscriptionStartedAt: subscriptionStartDate,
+            subscriptionEndsAt: subscriptionEndDate,
+            maxStudents: plan.maxStudents,
+            maxStaff: plan.maxStaff,
+            isActive: true,
+            updatedAt: new Date(),
+          })
+          .where(eq(organizations.id, id))
+          .returning();
+
+        res.json(updatedOrg);
+      } catch (error) {
+        console.error("Error upgrading organization:", error);
+        res.status(500).json({ message: "Failed to upgrade organization" });
+      }
+    }
+  );
+
+  /**
+   * POST /api/superadmin/organizations/:id/renew
+   * Renew subscription for an organization
+   */
+  app.post(
+    "/api/superadmin/organizations/:id/renew",
+    isAuthenticated,
+    hasRole("superadmin"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { billingCycle } = req.body;
+
+        const [org] = await db
+          .select()
+          .from(organizations)
+          .where(eq(organizations.id, id))
+          .limit(1);
+
+        if (!org) {
+          return res.status(404).json({ message: "Organization not found" });
+        }
+
+        // Calculate new subscription end date
+        const newEndDate = new Date(org.subscriptionEndsAt || new Date());
+
+        if (billingCycle === "monthly") {
+          newEndDate.setMonth(newEndDate.getMonth() + 1);
+        } else if (billingCycle === "yearly") {
+          newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+        } else {
+          return res.status(400).json({
+            message: "Invalid billing cycle. Must be 'monthly' or 'yearly'",
+          });
+        }
+
+        const [updatedOrg] = await db
+          .update(organizations)
+          .set({
+            subscriptionStatus: "active",
+            subscriptionEndsAt: newEndDate,
+            isActive: true,
+            suspendedAt: null,
+            suspendedReason: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(organizations.id, id))
+          .returning();
+
+        res.json(updatedOrg);
+      } catch (error) {
+        console.error("Error renewing subscription:", error);
+        res.status(500).json({ message: "Failed to renew subscription" });
+      }
+    }
+  );
 }
