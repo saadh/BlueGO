@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import ParentLandingPage from "@/pages/parent-landing";
 import SchoolLandingPage from "@/pages/school-landing";
+import PlatformLoginPage from "@/pages/platform-login";
 import ParentPage from "@/pages/parent";
 import SecurityPage from "@/pages/security";
 import ClassroomPage from "@/pages/classroom";
@@ -20,6 +21,7 @@ function Router() {
     <Switch>
       <Route path="/" component={ParentLandingPage} />
       <Route path="/school" component={SchoolLandingPage} />
+      <Route path="/platform" component={PlatformLoginPage} />
       <ProtectedRoute path="/parent" component={ParentPage} allowedRoles={["parent"]} />
       <ProtectedRoute path="/security" component={SecurityPage} allowedRoles={["security"]} />
       <ProtectedRoute path="/classroom" component={ClassroomPage} allowedRoles={["teacher"]} />
