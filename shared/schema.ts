@@ -165,6 +165,7 @@ export const classes = pgTable("classes", {
 
 export const insertClassSchema = createInsertSchema(classes).omit({
   id: true,
+  organizationId: true, // Added server-side from authenticated user
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -231,6 +232,7 @@ export const students = pgTable("students", {
 
 export const insertStudentSchema = createInsertSchema(students).omit({
   id: true,
+  organizationId: true, // Added server-side from authenticated user
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -265,6 +267,7 @@ export const gates = pgTable("gates", {
 
 export const insertGateSchema = createInsertSchema(gates).omit({
   id: true,
+  organizationId: true, // Added server-side from authenticated user
   createdAt: true,
   updatedAt: true,
 }).extend({

@@ -247,7 +247,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const student = await storage.createStudent(validation.data);
+      // Add organizationId from authenticated user
+      const studentData = {
+        ...validation.data,
+        organizationId: req.user.organizationId!,
+      };
+
+      const student = await storage.createStudent(studentData);
       
       // If parent has NFC card, automatically link it to the new student
       if (req.user.nfcCardId) {
@@ -443,15 +449,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/classes", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
       const validation = insertClassSchema.safeParse(req.body);
-      
+
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: validation.error.errors
         });
       }
 
-      const classData = await storage.createClass(validation.data);
+      // Add organizationId from authenticated user
+      const classDataWithOrg = {
+        ...validation.data,
+        organizationId: req.user!.organizationId!,
+      };
+
+      const classData = await storage.createClass(classDataWithOrg);
       res.status(201).json(classData);
     } catch (error) {
       console.error('Error creating class:', error);
@@ -530,7 +542,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const gate = await storage.createGate(validation.data);
+      // Add organizationId from authenticated user
+      const gateData = {
+        ...validation.data,
+        organizationId: req.user!.organizationId!,
+      };
+
+      const gate = await storage.createGate(gateData);
       res.status(201).json(gate);
     } catch (error) {
       console.error('Error creating gate:', error);
