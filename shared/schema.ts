@@ -1,14 +1,109 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, index, uniqueIndex, boolean, decimal, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User roles in the system
-export const userRoles = ["parent", "teacher", "security", "admin"] as const;
+// Subscription statuses
+export const subscriptionStatuses = ["active", "suspended", "cancelled", "trial", "expired"] as const;
+export type SubscriptionStatus = typeof subscriptionStatuses[number];
+
+// Organizations (Schools) table - Multi-tenant support
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  domain: text("domain").unique(),
+  logoUrl: text("logo_url"),
+
+  // Contact Info
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  country: text("country").default("US"),
+
+  // Subscription & Billing
+  subscriptionStatus: text("subscription_status").notNull().$type<SubscriptionStatus>().default("trial"),
+  subscriptionPlan: text("subscription_plan").default("trial"), // trial, basic, premium, enterprise
+  subscriptionStartedAt: timestamp("subscription_started_at").defaultNow(),
+  subscriptionEndsAt: timestamp("subscription_ends_at"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  billingEmail: text("billing_email"),
+  maxStudents: text("max_students").default("100"), // stored as text for "unlimited"
+  maxStaff: text("max_staff").default("10"),
+
+  // Status & Access
+  isActive: boolean("is_active").notNull().default(true),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedReason: text("suspended_reason"),
+  featuresEnabled: jsonb("features_enabled").$type<Record<string, boolean>>(),
+
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdByUserId: varchar("created_by_user_id"),
+}, (table) => ({
+  slugIdx: index("org_slug_idx").on(table.slug),
+  statusIdx: index("org_status_idx").on(table.subscriptionStatus),
+  activeIdx: index("org_active_idx").on(table.isActive),
+}));
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(1, "Organization name is required"),
+  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
+  contactName: z.string().min(1, "Contact name is required"),
+  contactEmail: z.string().email("Valid email is required"),
+  subscriptionStatus: z.enum(subscriptionStatuses).default("trial"),
+});
+
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+// Subscription Plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+
+  // Pricing
+  priceMonthly: decimal("price_monthly", { precision: 10, scale: 2 }),
+  priceYearly: decimal("price_yearly", { precision: 10, scale: 2 }),
+
+  // Limits
+  maxStudents: text("max_students").notNull().default("500"),
+  maxStaff: text("max_staff").notNull().default("25"),
+  maxGates: text("max_gates").notNull().default("10"),
+
+  // Features
+  features: jsonb("features").$type<Record<string, boolean>>().notNull(),
+
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  displayOrder: text("display_order").default("0"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  slugIdx: uniqueIndex("plan_slug_idx").on(table.slug),
+}));
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+// User roles in the system - NOW INCLUDING SUPERADMIN
+export const userRoles = ["superadmin", "admin", "teacher", "security", "parent"] as const;
 export type UserRole = typeof userRoles[number];
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id, { onDelete: "cascade" }), // null for superadmin
   email: text("email").unique(),
   phone: text("phone").unique(),
   password: text("password").notNull(),
@@ -16,11 +111,20 @@ export const users = pgTable("users", {
   lastName: text("last_name").notNull(),
   role: text("role").notNull().$type<UserRole>(),
   nfcCardId: text("nfc_card_id"),
+
+  // Suspension capability
+  isSuspended: boolean("is_suspended").notNull().default(false),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedByUserId: varchar("suspended_by_user_id"),
+  suspendedReason: text("suspended_reason"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   emailIdx: index("email_idx").on(table.email),
   phoneIdx: index("phone_idx").on(table.phone),
+  organizationIdx: index("user_organization_idx").on(table.organizationId),
+  roleIdx: index("user_role_idx").on(table.role),
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -45,6 +149,7 @@ export type User = typeof users.$inferSelect;
 // Classes table - represents classrooms with teacher assignments
 export const classes = pgTable("classes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   school: text("school").notNull(),
   grade: text("grade").notNull(),
   section: text("section").notNull(), // e.g., "A", "B", "C"
@@ -53,6 +158,7 @@ export const classes = pgTable("classes", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
+  organizationIdx: index("class_organization_idx").on(table.organizationId),
   schoolIdx: index("class_school_idx").on(table.school),
   teacherIdx: index("class_teacher_idx").on(table.teacherId),
 }));
@@ -102,6 +208,7 @@ export type StudentGender = typeof studentGenders[number];
 // Students table - children registered by parents
 export const students = pgTable("students", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   parentId: varchar("parent_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   classId: varchar("class_id").references(() => classes.id, { onDelete: "set null" }), // Link to classes table
   name: text("name").notNull(),
@@ -115,6 +222,7 @@ export const students = pgTable("students", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
+  organizationIdx: index("student_organization_idx").on(table.organizationId),
   parentIdx: index("parent_idx").on(table.parentId),
   classIdx: index("student_class_idx").on(table.classId),
   studentIdIdx: index("student_id_idx").on(table.studentId),
@@ -144,12 +252,14 @@ export type GateStatus = typeof gateStatuses[number];
 // Gates table - security checkpoints where parents scan NFC cards
 export const gates = pgTable("gates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   location: text("location").notNull(),
   status: text("status").notNull().$type<GateStatus>().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
+  organizationIdx: index("gate_organization_idx").on(table.organizationId),
   statusIdx: index("gate_status_idx").on(table.status),
 }));
 
@@ -173,6 +283,7 @@ export type DismissalStatus = typeof dismissalStatuses[number];
 // Dismissals table - tracks parent arrivals and student pickups
 export const dismissals = pgTable("dismissals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   studentId: varchar("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
   parentId: varchar("parent_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   gateId: varchar("gate_id").references(() => gates.id, { onDelete: "set null" }),
@@ -184,6 +295,7 @@ export const dismissals = pgTable("dismissals", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
+  organizationIdx: index("dismissal_organization_idx").on(table.organizationId),
   studentIdx: index("dismissal_student_idx").on(table.studentId),
   parentIdx: index("dismissal_parent_idx").on(table.parentId),
   gateIdx: index("dismissal_gate_idx").on(table.gateId),

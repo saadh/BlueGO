@@ -10,6 +10,7 @@ import ParentPage from "@/pages/parent";
 import SecurityPage from "@/pages/security";
 import ClassroomPage from "@/pages/classroom";
 import AdminPage from "@/pages/admin";
+import SuperAdminPage from "@/pages/superadmin";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
@@ -22,6 +23,7 @@ function Router() {
       <ProtectedRoute path="/security" component={SecurityPage} allowedRoles={["security"]} />
       <ProtectedRoute path="/classroom" component={ClassroomPage} allowedRoles={["teacher"]} />
       <ProtectedRoute path="/admin" component={AdminPage} allowedRoles={["admin"]} />
+      <ProtectedRoute path="/superadmin" component={SuperAdminPage} allowedRoles={["superadmin"]} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hasRole, hashPassword } from "./auth";
 import { insertStudentSchema, insertClassSchema, insertGateSchema, insertUserSchema } from "@shared/schema";
 import { wsManager } from "./websocket";
+import { tenantIsolationMiddleware, subscriptionCheckMiddleware } from "./tenant-middleware";
+import { setupOrganizationRoutes } from "./organizations-api";
 
 // Helper function to normalize NFC card ID format
 function normalizeNFCCardId(nfcCardId: string): string {
@@ -14,6 +16,14 @@ function normalizeNFCCardId(nfcCardId: string): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication - creates /api/register, /api/login, /api/logout, /api/user
   setupAuth(app);
+
+  // Apply tenant isolation middleware to all API routes
+  // This extracts organization context from authenticated user
+  app.use("/api", tenantIsolationMiddleware);
+
+  // Apply subscription check middleware to all API routes (except auth)
+  // This ensures organizations have active subscriptions
+  app.use("/api", subscriptionCheckMiddleware);
 
   // Protected route example - requires authentication
   app.get("/api/protected", isAuthenticated, async (req, res) => {
@@ -605,6 +615,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch hourly statistics" });
     }
   });
+
+  // Setup organization management routes for superadmin
+  setupOrganizationRoutes(app);
 
   const httpServer = createServer(app);
 
