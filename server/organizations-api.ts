@@ -240,6 +240,9 @@ export function setupOrganizationRoutes(app: Express) {
           .where(eq(organizations.id, id))
           .returning();
 
+        // Log audit event
+        await AuditLogger.logOrganizationUpdated(req, updatedOrg.id, updatedOrg.name, updateData);
+
         res.json(updatedOrg);
       } catch (error) {
         console.error("Error updating organization:", error);

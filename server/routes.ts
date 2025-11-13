@@ -683,6 +683,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup analytics and reporting routes for superadmin
   setupAnalyticsRoutes(app);
 
+  // Get all subscription plans (accessible to superadmin for creating/editing organizations)
+  app.get("/api/subscription-plans", isAuthenticated, hasRole("superadmin"), async (req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { subscriptionPlans } = await import("@shared/schema");
+      const { asc } = await import("drizzle-orm");
+
+      const plans = await db
+        .select()
+        .from(subscriptionPlans)
+        .orderBy(asc(subscriptionPlans.priceMonthly));
+
+      res.json(plans);
+    } catch (error: any) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Initialize WebSocket server

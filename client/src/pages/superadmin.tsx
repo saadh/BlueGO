@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Users, AlertCircle, CheckCircle, XCircle, Plus, Search, BarChart3 } from "lucide-react";
+import { Building2, Users, AlertCircle, CheckCircle, XCircle, Plus, Search, BarChart3, Pencil } from "lucide-react";
 import { Link } from "wouter";
 
 type SubscriptionStatus = "active" | "suspended" | "cancelled" | "trial" | "expired";
@@ -43,6 +43,17 @@ interface OrganizationsResponse {
   };
 }
 
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  maxStudents: string;
+  maxStaff: string;
+  maxGates: string;
+  priceMonthly: string;
+  priceYearly: string;
+}
+
 const statusColors: Record<SubscriptionStatus, string> = {
   active: "bg-green-500",
   trial: "bg-blue-500",
@@ -56,8 +67,10 @@ export default function SuperAdminDashboard() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [createAdminDialogOpen, setCreateAdminDialogOpen] = useState(false);
   const [selectedOrgForAdmin, setSelectedOrgForAdmin] = useState<Organization | null>(null);
+  const [selectedOrgForEdit, setSelectedOrgForEdit] = useState<Organization | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -352,6 +365,17 @@ export default function SuperAdminDashboard() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        setSelectedOrgForEdit(org);
+                        setIsEditDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
                         setSelectedOrgForAdmin(org);
                         setCreateAdminDialogOpen(true);
                       }}
@@ -396,6 +420,13 @@ export default function SuperAdminDashboard() {
         onOpenChange={setCreateAdminDialogOpen}
         organization={selectedOrgForAdmin}
       />
+
+      {/* Edit Organization Dialog */}
+      <EditOrganizationDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        organization={selectedOrgForEdit}
+      />
     </div>
   );
 }
@@ -415,8 +446,19 @@ function CreateOrganizationDialog({
     contactName: "",
     contactEmail: "",
     contactPhone: "",
+    subscriptionPlan: "trial",
     maxStudents: "100",
     maxStaff: "10",
+  });
+
+  // Fetch subscription plans
+  const { data: plans } = useQuery<SubscriptionPlan[]>({
+    queryKey: ["/api/subscription-plans"],
+    queryFn: async () => {
+      const response = await fetch("/api/subscription-plans");
+      if (!response.ok) throw new Error("Failed to fetch subscription plans");
+      return response.json();
+    },
   });
 
   const createMutation = useMutation({
@@ -445,6 +487,7 @@ function CreateOrganizationDialog({
         contactName: "",
         contactEmail: "",
         contactPhone: "",
+        subscriptionPlan: "trial",
         maxStudents: "100",
         maxStaff: "10",
       });
@@ -544,6 +587,27 @@ function CreateOrganizationDialog({
                   setFormData({ ...formData, contactPhone: e.target.value })
                 }
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="subscriptionPlan">Subscription Plan</Label>
+              <Select
+                value={formData.subscriptionPlan}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, subscriptionPlan: value })
+                }
+              >
+                <SelectTrigger id="subscriptionPlan">
+                  <SelectValue placeholder="Select a plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans?.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.slug}>
+                      {plan.name} - {plan.maxStudents} students, {plan.maxStaff} staff
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -749,6 +813,217 @@ function CreateAdminDialog({
             </Button>
             <Button type="submit" disabled={createMutation.isPending}>
               {createMutation.isPending ? "Creating..." : "Create Admin"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditOrganizationDialog({
+  open,
+  onOpenChange,
+  organization,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  organization: Organization | null;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    subscriptionPlan: "",
+    maxStudents: "",
+    maxStaff: "",
+  });
+
+  // Fetch subscription plans
+  const { data: plans } = useQuery<SubscriptionPlan[]>({
+    queryKey: ["/api/subscription-plans"],
+    queryFn: async () => {
+      const response = await fetch("/api/subscription-plans");
+      if (!response.ok) throw new Error("Failed to fetch subscription plans");
+      return response.json();
+    },
+  });
+
+  // Update form when organization changes
+  useEffect(() => {
+    if (organization && open) {
+      setFormData({
+        name: organization.name,
+        slug: organization.slug,
+        contactName: organization.contactName,
+        contactEmail: organization.contactEmail,
+        contactPhone: "",
+        subscriptionPlan: organization.subscriptionPlan,
+        maxStudents: organization.maxStudents,
+        maxStaff: organization.maxStaff,
+      });
+    }
+  }, [organization, open]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      if (!organization) throw new Error("No organization selected");
+
+      const response = await fetch(`/api/superadmin/organizations/${organization.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update organization");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/stats"] });
+      toast({
+        title: "Organization Updated",
+        description: "The organization has been updated successfully.",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateMutation.mutate(formData);
+  };
+
+  if (!organization) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edit Organization</DialogTitle>
+            <DialogDescription>
+              Update organization details and subscription plan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Organization Name</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-slug">Slug (URL-friendly)</Label>
+                <Input
+                  id="edit-slug"
+                  value={formData.slug}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+                    })
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-contactName">Contact Name</Label>
+                <Input
+                  id="edit-contactName"
+                  value={formData.contactName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactName: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-contactEmail">Contact Email</Label>
+                <Input
+                  id="edit-contactEmail"
+                  type="email"
+                  value={formData.contactEmail}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactEmail: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-subscriptionPlan">Subscription Plan</Label>
+              <Select
+                value={formData.subscriptionPlan}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, subscriptionPlan: value })
+                }
+              >
+                <SelectTrigger id="edit-subscriptionPlan">
+                  <SelectValue placeholder="Select a plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans?.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.slug}>
+                      {plan.name} - {plan.maxStudents} students, {plan.maxStaff} staff
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-maxStudents">Max Students</Label>
+                <Input
+                  id="edit-maxStudents"
+                  value={formData.maxStudents}
+                  onChange={(e) =>
+                    setFormData({ ...formData, maxStudents: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-maxStaff">Max Staff</Label>
+                <Input
+                  id="edit-maxStaff"
+                  value={formData.maxStaff}
+                  onChange={(e) =>
+                    setFormData({ ...formData, maxStaff: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Updating..." : "Update Organization"}
             </Button>
           </DialogFooter>
         </form>
