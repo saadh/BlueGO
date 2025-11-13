@@ -52,6 +52,14 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Debug middleware to log authentication status
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api") && !req.path.includes("/assets")) {
+      console.log(`🌐 ${req.method} ${req.path} - Auth: ${req.isAuthenticated()} - User: ${req.user ? (req.user as any).email : "none"} - SessionID: ${req.sessionID}`);
+    }
+    next();
+  });
+
   // Use email or phone as username field
   passport.use(
     new LocalStrategy(
@@ -70,12 +78,19 @@ export function setupAuth(app: Express) {
     )
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log("🔐 Serializing user:", user.id);
+    done(null, user.id);
+  });
+
   passport.deserializeUser(async (id: string, done) => {
     try {
+      console.log("🔓 Deserializing user:", id);
       const user = await storage.getUser(id);
+      console.log("👤 Found user:", user ? `${user.email} (${user.role})` : "not found");
       done(null, user || false);
     } catch (error) {
+      console.error("❌ Deserialize error:", error);
       done(error);
     }
   });
@@ -139,9 +154,16 @@ export function setupAuth(app: Express) {
       req.login(user, (err) => {
         if (err) return next(err);
 
+        console.log("✅ Login successful for:", user.email, "Session ID:", req.sessionID);
+
         // Explicitly save the session to ensure it persists
         req.session.save((err) => {
-          if (err) return next(err);
+          if (err) {
+            console.error("❌ Session save error:", err);
+            return next(err);
+          }
+
+          console.log("💾 Session saved successfully");
 
           // Don't send password to client
           const { password: _, ...userWithoutPassword } = user;
