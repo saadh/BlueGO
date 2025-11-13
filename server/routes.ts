@@ -4,6 +4,11 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hasRole, hashPassword } from "./auth";
 import { insertStudentSchema, insertClassSchema, insertGateSchema, insertUserSchema } from "@shared/schema";
 import { wsManager } from "./websocket";
+import { tenantIsolationMiddleware, subscriptionCheckMiddleware } from "./tenant-middleware";
+import { setupOrganizationRoutes } from "./organizations-api";
+import { setupUserManagementRoutes } from "./users-api";
+import { setupAnalyticsRoutes } from "./analytics-api";
+import { checkUsageLimit } from "./tenant-queries";
 
 // Helper function to normalize NFC card ID format
 function normalizeNFCCardId(nfcCardId: string): string {
@@ -14,6 +19,14 @@ function normalizeNFCCardId(nfcCardId: string): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication - creates /api/register, /api/login, /api/logout, /api/user
   setupAuth(app);
+
+  // Apply tenant isolation middleware to all API routes
+  // This extracts organization context from authenticated user
+  app.use("/api", tenantIsolationMiddleware);
+
+  // Apply subscription check middleware to all API routes (except auth)
+  // This ensures organizations have active subscriptions
+  app.use("/api", subscriptionCheckMiddleware);
 
   // Protected route example - requires authentication
   app.get("/api/protected", isAuthenticated, async (req, res) => {
@@ -210,10 +223,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: validation.error.errors
         });
+      }
+
+      // Check usage limits for student creation
+      if (req.user.organizationId) {
+        const currentStudents = await storage.getStudentsByOrganization(req.user.organizationId);
+        const limitCheck = await checkUsageLimit(
+          req.user.organizationId,
+          "students",
+          currentStudents.length
+        );
+
+        if (!limitCheck.allowed) {
+          return res.status(403).json({
+            message: limitCheck.message,
+            currentCount: currentStudents.length,
+            limit: limitCheck.limit,
+          });
+        }
       }
 
       const student = await storage.createStudent(validation.data);
@@ -345,12 +376,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/users", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
       const validation = insertUserSchema.safeParse(req.body);
-      
+
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: validation.error.errors
         });
+      }
+
+      // Check usage limits for staff creation (teacher, security, admin roles only)
+      const staffRoles = ["teacher", "security", "admin"];
+      if (req.user?.organizationId && staffRoles.includes(validation.data.role)) {
+        const currentStaff = await storage.getStaffByOrganization(req.user.organizationId);
+        const limitCheck = await checkUsageLimit(
+          req.user.organizationId,
+          "staff",
+          currentStaff.length
+        );
+
+        if (!limitCheck.allowed) {
+          return res.status(403).json({
+            message: limitCheck.message,
+            currentCount: currentStaff.length,
+            limit: limitCheck.limit,
+          });
+        }
       }
 
       // Hash the password before storing
@@ -454,12 +504,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/gates", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
       const validation = insertGateSchema.safeParse(req.body);
-      
+
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: validation.error.errors
         });
+      }
+
+      // Check usage limits for gate creation
+      if (req.user?.organizationId) {
+        const currentGates = await storage.getGatesByOrganization(req.user.organizationId);
+        const limitCheck = await checkUsageLimit(
+          req.user.organizationId,
+          "gates",
+          currentGates.length
+        );
+
+        if (!limitCheck.allowed) {
+          return res.status(403).json({
+            message: limitCheck.message,
+            currentCount: currentGates.length,
+            limit: limitCheck.limit,
+          });
+        }
       }
 
       const gate = await storage.createGate(validation.data);
@@ -605,6 +673,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch hourly statistics" });
     }
   });
+
+  // Setup organization management routes for superadmin
+  setupOrganizationRoutes(app);
+
+  // Setup user management routes for superadmin
+  setupUserManagementRoutes(app);
+
+  // Setup analytics and reporting routes for superadmin
+  setupAnalyticsRoutes(app);
 
   const httpServer = createServer(app);
 

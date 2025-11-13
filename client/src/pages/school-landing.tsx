@@ -32,6 +32,9 @@ export default function SchoolLandingPage() {
         case "admin":
           setLocation("/admin");
           break;
+        case "superadmin":
+          setLocation("/superadmin");
+          break;
         default:
           setLocation("/");
       }

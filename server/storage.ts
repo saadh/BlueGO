@@ -594,6 +594,39 @@ export class DbStorage implements IStorage {
       label: `${hour}:00`,
     }));
   }
+
+  // Get all students for an organization (for usage limit checking)
+  async getStudentsByOrganization(organizationId: string) {
+    return await db
+      .select()
+      .from(students)
+      .where(eq(students.organizationId, organizationId));
+  }
+
+  // Get all staff (teacher, security, admin) for an organization (for usage limit checking)
+  async getStaffByOrganization(organizationId: string) {
+    return await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.organizationId, organizationId),
+          or(
+            eq(users.role, "teacher"),
+            eq(users.role, "security"),
+            eq(users.role, "admin")
+          )
+        )
+      );
+  }
+
+  // Get all gates for an organization (for usage limit checking)
+  async getGatesByOrganization(organizationId: string) {
+    return await db
+      .select()
+      .from(gates)
+      .where(eq(gates.organizationId, organizationId));
+  }
 }
 
 export const storage = new DbStorage();

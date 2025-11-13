@@ -2,6 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase } from "./init-db";
+import { seedAdminAccount } from "./seed-admin";
+import { seedSuperadminAccount } from "./seed-superadmin";
+import { seedSubscriptionPlans } from "./seed-plans";
 
 const app = express();
 app.use(express.json());
@@ -41,6 +44,10 @@ app.use((req, res, next) => {
   // Initialize database tables
   try {
     await initializeDatabase();
+    // Seed initial data
+    await seedAdminAccount();
+    await seedSuperadminAccount();
+    await seedSubscriptionPlans();
   } catch (error) {
     console.error("Database initialization failed:", error);
     // Continue anyway - tables might already exist
