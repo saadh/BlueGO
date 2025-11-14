@@ -230,7 +230,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify the dismissal belongs to the user's organization
+      console.log(`🔍 Authorization check:`, {
+        dismissalOrgId: dismissal.organizationId,
+        userOrgId: req.user.organizationId,
+        userRole: req.user.role,
+        userEmail: req.user.email,
+      });
+
       if (dismissal.organizationId !== req.user.organizationId) {
+        console.log(`❌ Authorization failed: dismissal org ${dismissal.organizationId} !== user org ${req.user.organizationId}`);
         return res.status(403).json({ message: "Access denied to this dismissal" });
       }
 
