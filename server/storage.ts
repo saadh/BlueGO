@@ -306,6 +306,11 @@ export class DbStorage implements IStorage {
     return classData;
   }
 
+  // Alias for getClassById (used in routes for consistency)
+  async getClass(id: string): Promise<Class | undefined> {
+    return this.getClassById(id);
+  }
+
   async getClassesByTeacher(teacherId: string): Promise<Class[]> {
     return await db.select().from(classes).where(eq(classes.teacherId, teacherId));
   }
@@ -371,6 +376,11 @@ export class DbStorage implements IStorage {
   async getGateById(id: string): Promise<Gate | undefined> {
     const [gate] = await db.select().from(gates).where(eq(gates.id, id));
     return gate;
+  }
+
+  // Alias for getGateById (used in routes for consistency)
+  async getGate(id: string): Promise<Gate | undefined> {
+    return this.getGateById(id);
   }
 
   async getActiveGates(): Promise<Gate[]> {
@@ -458,6 +468,35 @@ export class DbStorage implements IStorage {
       .innerJoin(users, eq(dismissals.parentId, users.id))
       .leftJoin(gates, eq(dismissals.gateId, gates.id))
       .where(inArray(dismissals.studentId, studentIds));
+
+    return dismissalsWithDetails;
+  }
+
+  // Get all dismissals for an entire organization (for admin view)
+  async getDismissalsForOrganization(organizationId: string): Promise<any[]> {
+    // Get dismissals with joined data, filtered by organization
+    const dismissalsWithDetails = await db
+      .select({
+        id: dismissals.id,
+        studentId: dismissals.studentId,
+        parentId: dismissals.parentId,
+        gateId: dismissals.gateId,
+        status: dismissals.status,
+        calledAt: dismissals.calledAt,
+        completedAt: dismissals.completedAt,
+        studentName: students.name,
+        studentAvatarUrl: students.avatarUrl,
+        studentGrade: students.grade,
+        studentClass: students.class,
+        parentFirstName: users.firstName,
+        parentLastName: users.lastName,
+        gateName: gates.name,
+      })
+      .from(dismissals)
+      .innerJoin(students, eq(dismissals.studentId, students.id))
+      .innerJoin(users, eq(dismissals.parentId, users.id))
+      .leftJoin(gates, eq(dismissals.gateId, gates.id))
+      .where(eq(dismissals.organizationId, organizationId));
 
     return dismissalsWithDetails;
   }
