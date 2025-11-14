@@ -299,7 +299,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify parent has access to this organization (is registered there)
-      const parentAccount = await storage.getUserByEmailAndOrganization(req.user.email!, organizationId);
+      let parentAccount: User | undefined;
+      if (req.user.email) {
+        parentAccount = await storage.getUserByEmailAndOrganization(req.user.email, organizationId);
+      } else if (req.user.phone) {
+        parentAccount = await storage.getUserByPhoneAndOrganization(req.user.phone, organizationId);
+      }
+
       if (!parentAccount) {
         return res.status(403).json({ message: "You are not registered in the selected school" });
       }
