@@ -198,8 +198,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Parent routes
+
+  // Get organizations where parent is registered (by email)
+  app.get("/api/parent/organizations", isAuthenticated, hasRole("parent"), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Find all user records with the same email across different organizations
+      const parentAccounts = await storage.getUsersByEmail(req.user.email!);
+
+      // Extract unique organization IDs
+      const orgIds = [...new Set(parentAccounts.map(acc => acc.organizationId).filter(id => id))];
+
+      // Fetch organization details for each
+      const organizations = await Promise.all(
+        orgIds.map(async (orgId) => {
+          const org = await storage.getOrganizationById(orgId!);
+          return org;
+        })
+      );
+
+      // Filter out any null/undefined and return
+      const validOrgs = organizations.filter(org => org !== undefined);
+
+      res.json(validOrgs);
+    } catch (error) {
+      console.error('Error fetching parent organizations:', error);
+      res.status(500).json({ message: "Failed to fetch organizations" });
+    }
+  });
+
+  // Get classes for a specific organization (for parent adding student)
+  app.get("/api/parent/classes/:organizationId", isAuthenticated, hasRole("parent"), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { organizationId } = req.params;
+
+      // Verify parent has access to this organization (is registered there)
+      const parentAccount = await storage.getUserByEmailAndOrganization(req.user.email!, organizationId);
+      if (!parentAccount) {
+        return res.status(403).json({ message: "You are not registered in this organization" });
+      }
+
+      const classes = await storage.getClassesByOrganization(organizationId);
+      res.json(classes);
+    } catch (error) {
+      console.error('Error fetching organization classes:', error);
+      res.status(500).json({ message: "Failed to fetch classes" });
+    }
+  });
+
   // Student management routes - parent only
-  
+
   // Get all students for the authenticated parent
   app.get("/api/students", isAuthenticated, hasRole("parent"), async (req, res) => {
     try {
@@ -218,12 +274,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add a new student
   app.post("/api/students", isAuthenticated, hasRole("parent"), async (req, res) => {
     try {
-      if (!req.user?.organizationId) {
-        return res.status(400).json({ message: "Parent must belong to an organization" });
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { organizationId } = req.body;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "Organization (school) selection is required" });
+      }
+
+      // Verify parent has access to this organization (is registered there)
+      const parentAccount = await storage.getUserByEmailAndOrganization(req.user.email!, organizationId);
+      if (!parentAccount) {
+        return res.status(403).json({ message: "You are not registered in the selected school" });
       }
 
       // Fetch organization to get the name for the school field
-      const organization = await storage.getOrganizationById(req.user.organizationId);
+      const organization = await storage.getOrganizationById(organizationId);
       if (!organization) {
         return res.status(404).json({ message: "Organization not found" });
       }
@@ -241,9 +309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check usage limits for student creation
-      const currentStudents = await storage.getStudentsByOrganization(req.user.organizationId);
+      const currentStudents = await storage.getStudentsByOrganization(organizationId);
       const limitCheck = await checkUsageLimit(
-        req.user.organizationId,
+        organizationId,
         "students",
         currentStudents.length
       );
@@ -256,10 +324,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Add organizationId and school name from authenticated user's organization
+      // Add organizationId and school name from selected organization
       const studentData = {
         ...validation.data,
-        organizationId: req.user.organizationId,
+        organizationId: organizationId,
         school: organization.name, // Auto-populate school from organization name
       };
 

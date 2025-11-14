@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import type { Class } from "@shared/schema";
+import type { Class, Organization } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 const studentSchema = z.object({
   name: z.string().min(1, "Name is required"),
   studentId: z.string().min(1, "Student ID is required"),
+  organizationId: z.string().min(1, "School is required"),
   grade: z.string().min(1, "Grade is required"),
   class: z.string().min(1, "Class is required"),
   gender: z.enum(["male", "female"]),
@@ -49,19 +50,33 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
     defaultValues: {
       name: "",
       studentId: "",
+      organizationId: "",
       grade: "",
       class: "",
       gender: "male",
     },
   });
 
-  // Fetch classes from database (now filtered by user's organization)
-  const { data: classes = [] } = useQuery<Class[]>({
-    queryKey: ["/api/classes"],
+  // Watch form values for dynamic filtering
+  const selectedOrganizationId = form.watch("organizationId");
+  const selectedGrade = form.watch("grade");
+
+  // Fetch organizations where parent is registered
+  const { data: organizations = [] } = useQuery<Organization[]>({
+    queryKey: ["/api/parent/organizations"],
   });
 
-  // Watch form value for dynamic filtering
-  const selectedGrade = form.watch("grade");
+  // Fetch classes for selected organization
+  const { data: classes = [] } = useQuery<Class[]>({
+    queryKey: ["/api/parent/classes", selectedOrganizationId],
+    queryFn: async () => {
+      if (!selectedOrganizationId) return [];
+      const response = await fetch(`/api/parent/classes/${selectedOrganizationId}`);
+      if (!response.ok) throw new Error("Failed to fetch classes");
+      return response.json();
+    },
+    enabled: !!selectedOrganizationId,
+  });
 
   // Extract unique grades from classes
   const grades = Array.from(new Set(classes.map(c => c.grade))).sort();
@@ -72,6 +87,14 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
     .map(c => c.section)
     .filter((value, index, self) => self.indexOf(value) === index)
     .sort();
+
+  // Reset grade and class when organization changes
+  useEffect(() => {
+    if (selectedOrganizationId) {
+      form.setValue("grade", "");
+      form.setValue("class", "");
+    }
+  }, [selectedOrganizationId]);
 
   // Reset class when grade changes
   useEffect(() => {
@@ -122,6 +145,36 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="organizationId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>School</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-organization">
+                        <SelectValue placeholder="Select school" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {organizations.length > 0 ? (
+                        organizations.map((org) => (
+                          <SelectItem key={org.id} value={org.id}>
+                            {org.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-orgs" disabled>
+                          No schools available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -144,7 +197,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                           ))
                         ) : (
                           <SelectItem value="no-grades" disabled>
-                            No grades available
+                            {selectedOrganizationId ? "No grades available" : "Select school first"}
                           </SelectItem>
                         )}
                       </SelectContent>
@@ -174,7 +227,7 @@ export default function AddStudentDialog({ open, onOpenChange, onSubmit }: AddSt
                           ))
                         ) : (
                           <SelectItem value="no-classes" disabled>
-                            {selectedGrade ? "No classes available" : "Select grade first"}
+                            {!selectedOrganizationId ? "Select school first" : !selectedGrade ? "Select grade first" : "No classes available"}
                           </SelectItem>
                         )}
                       </SelectContent>

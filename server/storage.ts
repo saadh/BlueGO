@@ -126,6 +126,28 @@ export class DbStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
+  // Get all user accounts with the same email (across different organizations)
+  async getUsersByEmail(email: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+  }
+
+  // Get user by email and organization ID
+  async getUserByEmailAndOrganization(email: string, organizationId: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.email, email),
+          eq(users.organizationId, organizationId)
+        )
+      );
+    return user;
+  }
+
   // Student operations
   async getStudentsByParentId(parentId: string): Promise<Student[]> {
     return await db.select().from(students).where(eq(students.parentId, parentId));
