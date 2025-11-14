@@ -166,10 +166,10 @@ export const classes = pgTable("classes", {
 export const insertClassSchema = createInsertSchema(classes).omit({
   id: true,
   organizationId: true, // Added server-side from authenticated user
+  school: true, // Added server-side from organization name
   createdAt: true,
   updatedAt: true,
 }).extend({
-  school: z.string().min(1, "School is required"),
   grade: z.string().min(1, "Grade is required"),
   section: z.string().min(1, "Section is required"),
   roomNumber: z.string().optional(),
