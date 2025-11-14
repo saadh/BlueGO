@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Users, BookOpen } from "lucide-react";
+import { Plus, Edit, Trash2, Users, BookOpen, Monitor } from "lucide-react";
+import { Link } from "wouter";
 import {
   Table,
   TableBody,
@@ -332,9 +333,17 @@ export default function SchoolAdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">School Administration</h1>
-        <p className="text-muted-foreground mt-1">Manage all aspects of your school's dismissal system</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold">School Administration</h1>
+          <p className="text-muted-foreground mt-1">Manage all aspects of your school's dismissal system</p>
+        </div>
+        <Button asChild variant="default" size="lg">
+          <Link href="/classroom">
+            <Monitor className="w-4 h-4 mr-2" />
+            Calling Screen
+          </Link>
+        </Button>
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">
