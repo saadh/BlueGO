@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import AuthPage from "@/pages/auth";
 import ParentLandingPage from "@/pages/parent-landing";
 import SchoolLandingPage from "@/pages/school-landing";
 import PlatformLoginPage from "@/pages/platform-login";
@@ -20,6 +21,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={ParentLandingPage} />
+      <Route path="/auth" component={AuthPage} />
       <Route path="/school" component={SchoolLandingPage} />
       <Route path="/platform" component={PlatformLoginPage} />
       <ProtectedRoute path="/parent" component={ParentPage} allowedRoles={["parent"]} />

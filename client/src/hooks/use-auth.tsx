@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     retry: false,
+    staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
     queryFn: async () => {
       const res = await fetch("/api/user", {
         credentials: "include",
