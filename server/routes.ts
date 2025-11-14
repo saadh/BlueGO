@@ -299,7 +299,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify parent has access to this organization (is registered there)
-      const parentAccount = await storage.getUserByEmailAndOrganization(req.user.email!, organizationId);
+      let parentAccount: User | undefined;
+      if (req.user.email) {
+        parentAccount = await storage.getUserByEmailAndOrganization(req.user.email, organizationId);
+      } else if (req.user.phone) {
+        parentAccount = await storage.getUserByPhoneAndOrganization(req.user.phone, organizationId);
+      }
+
       if (!parentAccount) {
         return res.status(403).json({ message: "You are not registered in the selected school" });
       }
@@ -310,12 +316,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
+      // Prepare data for validation: remove organizationId (omitted in schema) and add school
+      const { organizationId: _, ...bodyWithoutOrgId } = req.body;
       const validation = insertStudentSchema.safeParse({
-        ...req.body,
+        ...bodyWithoutOrgId,
         parentId: req.user.id,
+        school: organization.name, // Add school for validation
       });
 
       if (!validation.success) {
+        console.error('Student validation failed:', validation.error.errors);
         return res.status(400).json({
           message: "Validation failed",
           errors: validation.error.errors
@@ -338,11 +348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Add organizationId and school name from selected organization
+      // Add organizationId (school is already included from validation)
       const studentData = {
         ...validation.data,
         organizationId: organizationId,
-        school: organization.name, // Auto-populate school from organization name
       };
 
       const student = await storage.createStudent(studentData);
@@ -522,11 +531,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Management
   app.get("/api/admin/users", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
-      const users = await storage.getUsersByRole("parent");
-      const teachers = await storage.getUsersByRole("teacher");
-      const security = await storage.getUsersByRole("security");
-      const admins = await storage.getUsersByRole("admin");
-      
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
+      // Fetch only users from the admin's organization (multi-tenant isolation)
+      const users = await storage.getUsersByRoleAndOrganization("parent", req.user.organizationId);
+      const teachers = await storage.getUsersByRoleAndOrganization("teacher", req.user.organizationId);
+      const security = await storage.getUsersByRoleAndOrganization("security", req.user.organizationId);
+      const admins = await storage.getUsersByRoleAndOrganization("admin", req.user.organizationId);
+
       const allUsers = [...users, ...teachers, ...security, ...admins].map(({ password: _, ...user }) => user);
       res.json(allUsers);
     } catch (error) {
@@ -632,7 +646,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/admin/users/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { id } = req.params;
+
+      // Verify user belongs to admin's organization
+      const userToDelete = await storage.getUser(id);
+      if (!userToDelete || userToDelete.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this user" });
+      }
+
       await storage.deleteUser(id);
       res.status(204).send();
     } catch (error) {
@@ -694,13 +719,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/classes/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { id } = req.params;
+
+      // Verify class belongs to admin's organization
+      const classInfo = await storage.getClass(id);
+      if (!classInfo || classInfo.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this class" });
+      }
+
       const validation = insertClassSchema.partial().safeParse(req.body);
-      
+
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: validation.error.errors
         });
       }
 
@@ -714,7 +750,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/admin/classes/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { id } = req.params;
+
+      // Verify class belongs to admin's organization
+      const classInfo = await storage.getClass(id);
+      if (!classInfo || classInfo.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this class" });
+      }
+
       await storage.deleteClass(id);
       res.status(204).send();
     } catch (error) {
@@ -783,13 +830,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/gates/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { id } = req.params;
+
+      // Verify gate belongs to admin's organization
+      const gate = await storage.getGate(id);
+      if (!gate || gate.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this gate" });
+      }
+
       const validation = insertGateSchema.partial().safeParse(req.body);
-      
+
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: validation.error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: validation.error.errors
         });
       }
 
@@ -803,7 +861,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/admin/gates/:id", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { id } = req.params;
+
+      // Verify gate belongs to admin's organization
+      const gate = await storage.getGate(id);
+      if (!gate || gate.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this gate" });
+      }
+
       await storage.deleteGate(id);
       res.status(204).send();
     } catch (error) {
@@ -815,7 +884,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Teacher-Class Assignment Management
   app.get("/api/admin/teacher-classes/:teacherId", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { teacherId } = req.params;
+
+      // Verify teacher belongs to admin's organization
+      const teacher = await storage.getUser(teacherId);
+      if (!teacher || teacher.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this teacher" });
+      }
+
       const classes = await storage.getTeacherClassAssignments(teacherId);
       res.json(classes);
     } catch (error) {
@@ -826,10 +906,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/teacher-classes", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { teacherId, classId } = req.body;
-      
+
       if (!teacherId || !classId) {
         return res.status(400).json({ message: "Teacher ID and Class ID are required" });
+      }
+
+      // Verify teacher belongs to admin's organization
+      const teacher = await storage.getUser(teacherId);
+      if (!teacher || teacher.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this teacher" });
+      }
+
+      // Verify class belongs to admin's organization
+      const classInfo = await storage.getClass(classId);
+      if (!classInfo || classInfo.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this class" });
       }
 
       const assignment = await storage.createTeacherClassAssignment({ teacherId, classId });
@@ -846,7 +942,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/admin/teacher-classes/:teacherId/:classId", isAuthenticated, hasRole("admin"), async (req, res) => {
     try {
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
       const { teacherId, classId } = req.params;
+
+      // Verify teacher belongs to admin's organization
+      const teacher = await storage.getUser(teacherId);
+      if (!teacher || teacher.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this teacher" });
+      }
+
+      // Verify class belongs to admin's organization
+      const classInfo = await storage.getClass(classId);
+      if (!classInfo || classInfo.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this class" });
+      }
+
       await storage.deleteTeacherClassAssignment(teacherId, classId);
       res.status(204).send();
     } catch (error) {

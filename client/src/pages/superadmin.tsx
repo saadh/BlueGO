@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Users, AlertCircle, CheckCircle, XCircle, Plus, Search, BarChart3, Pencil } from "lucide-react";
 import { Link } from "wouter";
+import AppHeader from "@/components/AppHeader";
+import { useAuth } from "@/hooks/use-auth";
 
 type SubscriptionStatus = "active" | "suspended" | "cancelled" | "trial" | "expired";
 
@@ -73,6 +75,9 @@ export default function SuperAdminDashboard() {
   const [selectedOrgForEdit, setSelectedOrgForEdit] = useState<Organization | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  if (!user) return null;
 
   // Fetch platform statistics
   const { data: stats } = useQuery({
@@ -161,26 +166,30 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const fullName = `${user.firstName} ${user.lastName}`;
+
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage organizations and subscriptions</p>
+    <div className="min-h-screen bg-background">
+      <AppHeader userName={fullName} userRole="superadmin" />
+      <main className="container mx-auto px-6 py-8 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
+            <p className="text-muted-foreground">Manage organizations and subscriptions</p>
+          </div>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/superadmin/users">
+                <Users className="h-4 w-4 mr-2" />
+                Manage Users
+              </Link>
+            </Button>
+            <CreateOrganizationDialog
+              open={isCreateDialogOpen}
+              onOpenChange={setIsCreateDialogOpen}
+            />
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/superadmin/users">
-              <Users className="h-4 w-4 mr-2" />
-              Manage Users
-            </Link>
-          </Button>
-          <CreateOrganizationDialog
-            open={isCreateDialogOpen}
-            onOpenChange={setIsCreateDialogOpen}
-          />
-        </div>
-      </div>
 
       {/* Statistics Cards */}
       {stats && (
@@ -427,6 +436,7 @@ export default function SuperAdminDashboard() {
         onOpenChange={setIsEditDialogOpen}
         organization={selectedOrgForEdit}
       />
+      </main>
     </div>
   );
 }

@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Users, Search, Ban, CheckCircle, Building2, Mail, Phone, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
+import AppHeader from "@/components/AppHeader";
+import { useAuth } from "@/hooks/use-auth";
 
 type UserRole = "admin" | "teacher" | "security" | "parent";
 
@@ -57,6 +59,9 @@ export default function SuperAdminUsersPage() {
   const [suspendedFilter, setSuspendedFilter] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  if (!user) return null;
 
   // Fetch users
   const { data, isLoading } = useQuery<UsersResponse>({
@@ -136,20 +141,24 @@ export default function SuperAdminUsersPage() {
     }
   };
 
+  const fullName = `${user.firstName} ${user.lastName}`;
+
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">Manage users across all organizations</p>
+    <div className="min-h-screen bg-background">
+      <AppHeader userName={fullName} userRole="superadmin" />
+      <main className="container mx-auto px-6 py-8 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">User Management</h1>
+            <p className="text-muted-foreground">Manage users across all organizations</p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/superadmin">
+              <Building2 className="h-4 w-4 mr-2" />
+              Back to Organizations
+            </Link>
+          </Button>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/superadmin">
-            <Building2 className="h-4 w-4 mr-2" />
-            Back to Organizations
-          </Link>
-        </Button>
-      </div>
 
       {/* Filters */}
       <Card>
@@ -323,6 +332,7 @@ export default function SuperAdminUsersPage() {
           )}
         </>
       )}
+      </main>
     </div>
   );
 }
