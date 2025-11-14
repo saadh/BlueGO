@@ -28,9 +28,9 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
   });
 
   // Fetch active dismissals for all students
+  // WebSocket will trigger refetch on changes, no need for polling
   const { data: dismissals = [] } = useQuery<Dismissal[]>({
     queryKey: ["/api/parent/dismissals"],
-    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   const updateNFCMutation = useMutation({
@@ -92,6 +92,8 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
       return await res.json();
     },
     onSuccess: (data) => {
+      // Immediately invalidate to refetch and show updated status
+      queryClient.invalidateQueries({ queryKey: ["/api/parent/dismissals"] });
       toast({
         title: "Pick-up Requested",
         description: "Your child's teacher has been notified. Please proceed to the school.",
@@ -266,6 +268,8 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
                 } : undefined}
                 onRequestPickup={handleRequestPickup}
                 onConfirmPickup={handleConfirmPickup}
+                isRequestingPickup={requestPickupMutation.isPending}
+                isConfirmingPickup={confirmPickupMutation.isPending}
               />
             );
           })}

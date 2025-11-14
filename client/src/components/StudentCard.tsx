@@ -30,6 +30,8 @@ interface StudentCardProps {
   activeDismissal?: ActiveDismissal | null;
   onRequestPickup?: (studentId: string) => void;
   onConfirmPickup?: (dismissalId: string) => void;
+  isRequestingPickup?: boolean;
+  isConfirmingPickup?: boolean;
 }
 
 export default function StudentCard({
@@ -43,7 +45,9 @@ export default function StudentCard({
   nfcLinked,
   activeDismissal,
   onRequestPickup,
-  onConfirmPickup
+  onConfirmPickup,
+  isRequestingPickup,
+  isConfirmingPickup
 }: StudentCardProps) {
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -137,9 +141,10 @@ export default function StudentCard({
                       onClick={() => onConfirmPickup(activeDismissal.id)}
                       className="w-full bg-[#00C851] hover:bg-[#00A844]"
                       size="sm"
+                      disabled={isConfirmingPickup}
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Confirm I Received My Child
+                      {isConfirmingPickup ? "Confirming..." : "Confirm I Received My Child"}
                     </Button>
                   )}
                 </div>
@@ -163,9 +168,10 @@ export default function StudentCard({
                 className="w-full"
                 variant="default"
                 data-testid={`button-request-pickup-${id}`}
+                disabled={isRequestingPickup}
               >
                 <PhoneCall className="w-4 h-4 mr-2" />
-                Request Pick-up
+                {isRequestingPickup ? "Requesting..." : "Request Pick-up"}
               </Button>
             </div>
           )}
