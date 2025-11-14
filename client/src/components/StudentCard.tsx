@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
+import { Edit, PhoneCall } from "lucide-react";
 import AvatarSelectionDialog from "./AvatarSelectionDialog";
 import { getAvatarUrl } from "@/lib/avatars";
 import { useMutation } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ interface StudentCardProps {
   gender: "male" | "female";
   avatarUrl?: string | null;
   nfcLinked?: boolean;
+  onRequestPickup?: (studentId: string) => void;
 }
 
 export default function StudentCard({
@@ -27,7 +28,8 @@ export default function StudentCard({
   class: className,
   gender,
   avatarUrl,
-  nfcLinked
+  nfcLinked,
+  onRequestPickup
 }: StudentCardProps) {
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -94,6 +96,19 @@ export default function StudentCard({
               </div>
             </div>
           </div>
+          {onRequestPickup && (
+            <div className="mt-4 pt-4 border-t">
+              <Button
+                onClick={() => onRequestPickup(id)}
+                className="w-full"
+                variant="default"
+                data-testid={`button-request-pickup-${id}`}
+              >
+                <PhoneCall className="w-4 h-4 mr-2" />
+                Request Pick-up
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

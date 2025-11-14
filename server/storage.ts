@@ -1,11 +1,12 @@
-import { 
+import {
   type User, type InsertUser, type UserRole,
   type Student, type InsertStudent,
   type Class, type InsertClass,
   type Gate, type InsertGate, type GateStatus,
   type Dismissal, type InsertDismissal, type DismissalStatus,
   type TeacherClass, type InsertTeacherClass,
-  users, students, classes, gates, dismissals, teacherClasses
+  type Organization,
+  users, students, classes, gates, dismissals, teacherClasses, organizations
 } from "@shared/schema";
 import { eq, and, or, inArray } from "drizzle-orm";
 import session from "express-session";
@@ -660,6 +661,16 @@ export class DbStorage implements IStorage {
       .select()
       .from(gates)
       .where(eq(gates.organizationId, organizationId));
+  }
+
+  // Organization operations
+  async getOrganizationById(organizationId: string): Promise<Organization | undefined> {
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+    return org;
   }
 }
 

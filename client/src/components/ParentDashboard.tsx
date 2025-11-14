@@ -78,6 +78,30 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
     updateNFCMutation.mutate(nfcCardId);
   };
 
+  const requestPickupMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      const res = await apiRequest("POST", "/api/parent/request-pickup", { studentId });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Pick-up Requested",
+        description: "Your child's teacher has been notified. Please proceed to the school.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRequestPickup = (studentId: string) => {
+    requestPickupMutation.mutate(studentId);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -171,6 +195,7 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
               gender={student.gender}
               avatarUrl={student.avatarUrl}
               nfcLinked={!!student.nfcCardId}
+              onRequestPickup={handleRequestPickup}
             />
           ))}
         </div>
