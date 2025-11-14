@@ -553,6 +553,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You can only request pick-up for your own children" });
       }
 
+      // Check if there's already an active dismissal for this student
+      const existingDismissals = await storage.getDismissalsByStudent(studentId);
+      const activeDismissal = existingDismissals.find(d =>
+        d.status === "pending" || d.status === "called" || d.status === "completed"
+      );
+
+      if (activeDismissal) {
+        // Return the existing dismissal instead of creating a new one
+        return res.status(200).json({
+          message: "Pick-up request already exists",
+          dismissal: {
+            id: activeDismissal.id,
+            studentId: student.id,
+            studentName: student.name,
+            status: activeDismissal.status,
+          },
+        });
+      }
+
       // Create dismissal request (similar to NFC scan but without gate/security info)
       const dismissal = await storage.createDismissal({
         studentId: student.id,
