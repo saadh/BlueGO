@@ -316,12 +316,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
+      // Prepare data for validation: remove organizationId (omitted in schema) and add school
+      const { organizationId: _, ...bodyWithoutOrgId } = req.body;
       const validation = insertStudentSchema.safeParse({
-        ...req.body,
+        ...bodyWithoutOrgId,
         parentId: req.user.id,
+        school: organization.name, // Add school for validation
       });
 
       if (!validation.success) {
+        console.error('Student validation failed:', validation.error.errors);
         return res.status(400).json({
           message: "Validation failed",
           errors: validation.error.errors
@@ -344,11 +348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Add organizationId and school name from selected organization
+      // Add organizationId (school is already included from validation)
       const studentData = {
         ...validation.data,
         organizationId: organizationId,
-        school: organization.name, // Auto-populate school from organization name
       };
 
       const student = await storage.createStudent(studentData);
