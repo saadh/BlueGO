@@ -114,6 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dismissal = await storage.createDismissal({
           studentId: child.id,
           parentId: parent.id,
+          organizationId: child.organizationId, // Use student's org, not parent's org
           gateId: gateId || null,
           scannedByUserId: req.user.id,
           status: "called", // Set to called to trigger classroom display
@@ -229,16 +230,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Dismissal not found" });
       }
 
-      // Verify the dismissal belongs to the user's organization
+      // Get the student to check organization
+      const student = await storage.getStudentById(dismissal.studentId);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      // Verify the student belongs to the user's organization
+      // (Dismissals inherit parent's org, but teachers/admins should check student's org)
       console.log(`🔍 Authorization check:`, {
-        dismissalOrgId: dismissal.organizationId,
+        studentOrgId: student.organizationId,
         userOrgId: req.user.organizationId,
         userRole: req.user.role,
         userEmail: req.user.email,
       });
 
-      if (dismissal.organizationId !== req.user.organizationId) {
-        console.log(`❌ Authorization failed: dismissal org ${dismissal.organizationId} !== user org ${req.user.organizationId}`);
+      if (student.organizationId !== req.user.organizationId) {
+        console.log(`❌ Authorization failed: student org ${student.organizationId} !== user org ${req.user.organizationId}`);
         return res.status(403).json({ message: "Access denied to this dismissal" });
       }
 
@@ -549,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dismissal = await storage.createDismissal({
         studentId: student.id,
         parentId: req.user.id,
-        organizationId: req.user.organizationId!,
+        organizationId: student.organizationId, // Use student's org, not parent's org
         gateId: null, // Parent is requesting from app, not at a gate
         scannedByUserId: null, // No security staff involved
         status: "called", // Set to called to trigger classroom display immediately
