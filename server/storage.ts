@@ -306,6 +306,11 @@ export class DbStorage implements IStorage {
     return classData;
   }
 
+  // Alias for getClassById (used in routes for consistency)
+  async getClass(id: string): Promise<Class | undefined> {
+    return this.getClassById(id);
+  }
+
   async getClassesByTeacher(teacherId: string): Promise<Class[]> {
     return await db.select().from(classes).where(eq(classes.teacherId, teacherId));
   }
@@ -371,6 +376,11 @@ export class DbStorage implements IStorage {
   async getGateById(id: string): Promise<Gate | undefined> {
     const [gate] = await db.select().from(gates).where(eq(gates.id, id));
     return gate;
+  }
+
+  // Alias for getGateById (used in routes for consistency)
+  async getGate(id: string): Promise<Gate | undefined> {
+    return this.getGateById(id);
   }
 
   async getActiveGates(): Promise<Gate[]> {
