@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,10 +6,11 @@ import { Plus, Mail, Phone, CreditCard, Link as LinkIcon } from "lucide-react";
 import StudentCard from "./StudentCard";
 import AddStudentDialog from "./AddStudentDialog";
 import LinkParentNFCDialog from "./LinkParentNFCDialog";
-import { User, Student, InsertStudent } from "@shared/schema";
+import { User, Student, InsertStudent, Dismissal } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 interface ParentDashboardProps {
   user: User;
@@ -19,10 +20,17 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLinkNFCDialogOpen, setIsLinkNFCDialogOpen] = useState(false);
+  const ws = useWebSocket();
 
   // Fetch students from database
   const { data: students = [], isLoading } = useQuery<Student[]>({
     queryKey: ["/api/students"],
+  });
+
+  // Fetch active dismissals for all students
+  const { data: dismissals = [] } = useQuery<Dismissal[]>({
+    queryKey: ["/api/parent/dismissals"],
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   const updateNFCMutation = useMutation({
@@ -101,6 +109,56 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
   const handleRequestPickup = (studentId: string) => {
     requestPickupMutation.mutate(studentId);
   };
+
+  const confirmPickupMutation = useMutation({
+    mutationFn: async (dismissalId: string) => {
+      const res = await apiRequest("PATCH", `/api/parent/dismissals/${dismissalId}/confirm`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/parent/dismissals"] });
+      toast({
+        title: "Pick-up Confirmed",
+        description: "Thank you for confirming you received your child!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Confirmation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleConfirmPickup = (dismissalId: string) => {
+    confirmPickupMutation.mutate(dismissalId);
+  };
+
+  // Listen for real-time dismissal updates via WebSocket
+  useEffect(() => {
+    if (!ws) return;
+
+    const handleDismissalUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/parent/dismissals"] });
+    };
+
+    ws.addEventListener("message", (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "dismissal-completed" || data.type === "dismissal-created") {
+        handleDismissalUpdate();
+      }
+    });
+  }, [ws]);
+
+  // Create a map of studentId -> activeDismissal
+  const dismissalMap = new Map<string, Dismissal>();
+  dismissals.forEach((dismissal) => {
+    // Only show the most recent active dismissal for each student
+    if (!dismissalMap.has(dismissal.studentId)) {
+      dismissalMap.set(dismissal.studentId, dismissal);
+    }
+  });
 
   return (
     <div className="space-y-6">
@@ -185,19 +243,31 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
         </div>
       ) : students.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {students.map((student) => (
-            <StudentCard
-              key={student.id}
-              id={student.id}
-              name={student.name}
-              grade={student.grade}
-              class={student.class}
-              gender={student.gender}
-              avatarUrl={student.avatarUrl}
-              nfcLinked={!!student.nfcCardId}
-              onRequestPickup={handleRequestPickup}
-            />
-          ))}
+          {students.map((student) => {
+            const activeDismissal = dismissalMap.get(student.id);
+            return (
+              <StudentCard
+                key={student.id}
+                id={student.id}
+                name={student.name}
+                school={student.school}
+                grade={student.grade}
+                class={student.class}
+                gender={student.gender}
+                avatarUrl={student.avatarUrl}
+                nfcLinked={!!student.nfcCardId}
+                activeDismissal={activeDismissal ? {
+                  id: activeDismissal.id,
+                  status: activeDismissal.status,
+                  calledAt: activeDismissal.calledAt ? activeDismissal.calledAt.toString() : null,
+                  completedAt: activeDismissal.completedAt ? activeDismissal.completedAt.toString() : null,
+                  confirmedByParentAt: activeDismissal.confirmedByParentAt ? activeDismissal.confirmedByParentAt.toString() : null,
+                } : undefined}
+                onRequestPickup={handleRequestPickup}
+                onConfirmPickup={handleConfirmPickup}
+              />
+            );
+          })}
         </div>
       ) : (
         <Card>
