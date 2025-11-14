@@ -532,9 +532,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (!req.user?.organizationId) {
+        return res.status(400).json({ message: "Admin must belong to an organization" });
+      }
+
+      // For parents: check if user with this email already exists
+      if (validation.data.role === "parent" && validation.data.email) {
+        const existingUsers = await storage.getUsersByEmail(validation.data.email);
+
+        if (existingUsers.length > 0) {
+          // Check if any existing user is not a parent
+          const nonParentUser = existingUsers.find(u => u.role !== "parent");
+          if (nonParentUser) {
+            return res.status(400).json({
+              message: `This email is already registered as a ${nonParentUser.role}. Cannot add as parent.`
+            });
+          }
+
+          // Check if parent already linked to this organization
+          const alreadyLinked = existingUsers.find(u => u.organizationId === req.user!.organizationId);
+          if (alreadyLinked) {
+            return res.status(400).json({
+              message: "This parent is already registered in your school"
+            });
+          }
+
+          // Parent exists in other schools - link to this organization
+          // Use the same password as existing parent account
+          const existingParent = existingUsers[0];
+          const user = await storage.createUser({
+            ...validation.data,
+            password: existingParent.password, // Reuse existing password
+            organizationId: req.user.organizationId,
+          });
+
+          const { password: _, ...userWithoutPassword } = user;
+          return res.status(201).json({
+            ...userWithoutPassword,
+            message: "Existing parent linked to your school"
+          });
+        }
+      }
+
       // Check usage limits for staff creation (teacher, security, admin roles only)
       const staffRoles = ["teacher", "security", "admin"];
-      if (req.user?.organizationId && staffRoles.includes(validation.data.role)) {
+      if (staffRoles.includes(validation.data.role)) {
         const currentStaff = await storage.getStaffByOrganization(req.user.organizationId);
         const limitCheck = await checkUsageLimit(
           req.user.organizationId,
@@ -551,13 +593,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Hash the password before storing
+      // Hash the password before storing (for new users)
       const hashedPassword = await hashPassword(validation.data.password);
       const user = await storage.createUser({
         ...validation.data,
         password: hashedPassword,
+        organizationId: req.user.organizationId,
       });
-      
+
       const { password: _, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
