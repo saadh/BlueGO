@@ -10,7 +10,7 @@ import { User, Student, InsertStudent, Dismissal } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useWebSocket } from "@/hooks/use-websocket";
+import { useWebSocket, WSEventType } from "@/hooks/use-websocket";
 
 interface ParentDashboardProps {
   user: User;
@@ -137,18 +137,19 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
 
   // Listen for real-time dismissal updates via WebSocket
   useEffect(() => {
-    if (!ws) return;
-
     const handleDismissalUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/parent/dismissals"] });
     };
 
-    ws.addEventListener("message", (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === "dismissal-completed" || data.type === "dismissal-created") {
-        handleDismissalUpdate();
-      }
-    });
+    // Subscribe to dismissal events
+    const unsubscribeCreated = ws.on(WSEventType.DISMISSAL_CREATED, handleDismissalUpdate);
+    const unsubscribeCompleted = ws.on(WSEventType.DISMISSAL_COMPLETED, handleDismissalUpdate);
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      unsubscribeCreated();
+      unsubscribeCompleted();
+    };
   }, [ws]);
 
   // Create a map of studentId -> activeDismissal
