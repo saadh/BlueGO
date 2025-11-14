@@ -152,32 +152,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Teacher routes - classroom display dismissals
   
-  // Get teacher's assigned classes
-  app.get("/api/teacher/classes", isAuthenticated, hasRole("teacher"), async (req, res) => {
+  // Get teacher's assigned classes or all classes for admin
+  app.get("/api/teacher/classes", isAuthenticated, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const classes = await storage.getTeacherClassAssignments(req.user.id);
-      res.json(classes);
+      // Admins see all classes in their organization
+      if (req.user.role === "admin") {
+        if (!req.user.organizationId) {
+          return res.status(400).json({ message: "Admin must belong to an organization" });
+        }
+        const classes = await storage.getClassesByOrganization(req.user.organizationId);
+        res.json(classes);
+        return;
+      }
+
+      // Teachers see only their assigned classes
+      if (req.user.role === "teacher") {
+        const classes = await storage.getTeacherClassAssignments(req.user.id);
+        res.json(classes);
+        return;
+      }
+
+      res.status(403).json({ message: "Unauthorized role" });
     } catch (error) {
-      console.error('Error fetching teacher classes:', error);
-      res.status(500).json({ message: "Failed to fetch teacher classes" });
+      console.error('Error fetching classes:', error);
+      res.status(500).json({ message: "Failed to fetch classes" });
     }
   });
-  
-  // Get all dismissals for teacher's assigned classes
-  app.get("/api/teacher/dismissals", isAuthenticated, hasRole("teacher"), async (req, res) => {
+
+  // Get all dismissals for teacher's assigned classes or all dismissals for admin
+  app.get("/api/teacher/dismissals", isAuthenticated, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const dismissals = await storage.getDismissalsForTeacherClasses(req.user.id);
-      res.json(dismissals);
+      // Admins see all dismissals in their organization
+      if (req.user.role === "admin") {
+        if (!req.user.organizationId) {
+          return res.status(400).json({ message: "Admin must belong to an organization" });
+        }
+        const dismissals = await storage.getDismissalsForOrganization(req.user.organizationId);
+        res.json(dismissals);
+        return;
+      }
+
+      // Teachers see only dismissals for their assigned classes
+      if (req.user.role === "teacher") {
+        const dismissals = await storage.getDismissalsForTeacherClasses(req.user.id);
+        res.json(dismissals);
+        return;
+      }
+
+      res.status(403).json({ message: "Unauthorized role" });
     } catch (error) {
-      console.error('Error fetching teacher dismissals:', error);
+      console.error('Error fetching dismissals:', error);
       res.status(500).json({ message: "Failed to fetch dismissals" });
     }
   });

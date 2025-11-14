@@ -472,6 +472,35 @@ export class DbStorage implements IStorage {
     return dismissalsWithDetails;
   }
 
+  // Get all dismissals for an entire organization (for admin view)
+  async getDismissalsForOrganization(organizationId: string): Promise<any[]> {
+    // Get dismissals with joined data, filtered by organization
+    const dismissalsWithDetails = await db
+      .select({
+        id: dismissals.id,
+        studentId: dismissals.studentId,
+        parentId: dismissals.parentId,
+        gateId: dismissals.gateId,
+        status: dismissals.status,
+        calledAt: dismissals.calledAt,
+        completedAt: dismissals.completedAt,
+        studentName: students.name,
+        studentAvatarUrl: students.avatarUrl,
+        studentGrade: students.grade,
+        studentClass: students.class,
+        parentFirstName: users.firstName,
+        parentLastName: users.lastName,
+        gateName: gates.name,
+      })
+      .from(dismissals)
+      .innerJoin(students, eq(dismissals.studentId, students.id))
+      .innerJoin(users, eq(dismissals.parentId, users.id))
+      .leftJoin(gates, eq(dismissals.gateId, gates.id))
+      .where(eq(dismissals.organizationId, organizationId));
+
+    return dismissalsWithDetails;
+  }
+
   async createDismissal(insertDismissal: InsertDismissal): Promise<Dismissal> {
     const [dismissal] = await db.insert(dismissals).values(insertDismissal).returning();
     return dismissal;
