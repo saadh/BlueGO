@@ -243,6 +243,19 @@ export class DbStorage implements IStorage {
     return await db.select().from(users).where(eq(users.role, role));
   }
 
+  // Get users by role and organization (for multi-tenant isolation)
+  async getUsersByRoleAndOrganization(role: UserRole, organizationId: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.role, role),
+          eq(users.organizationId, organizationId)
+        )
+      );
+  }
+
   async getStudentsByClass(school: string, grade: string, section: string): Promise<Student[]> {
     return await db
       .select()
