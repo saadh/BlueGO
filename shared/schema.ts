@@ -296,7 +296,8 @@ export const dismissals = pgTable("dismissals", {
   status: text("status").notNull().$type<DismissalStatus>().default("pending"),
   scannedAt: timestamp("scanned_at").defaultNow(), // When parent card was scanned
   calledAt: timestamp("called_at"), // When classroom was notified
-  completedAt: timestamp("completed_at"), // When student was picked up
+  completedAt: timestamp("completed_at"), // When teacher/admin marked student as picked up
+  confirmedByParentAt: timestamp("confirmed_by_parent_at"), // When parent confirmed receiving child
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

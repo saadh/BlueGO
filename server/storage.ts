@@ -8,7 +8,7 @@ import {
   type Organization,
   users, students, classes, gates, dismissals, teacherClasses, organizations
 } from "@shared/schema";
-import { eq, and, or, inArray } from "drizzle-orm";
+import { eq, and, or, inArray, isNull, gte, desc } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { db } from "./db";
@@ -499,6 +499,29 @@ export class DbStorage implements IStorage {
       .where(eq(dismissals.organizationId, organizationId));
 
     return dismissalsWithDetails;
+  }
+
+  // Get active dismissals for specific students (for parent view)
+  async getDismissalsByStudents(studentIds: string[]): Promise<Dismissal[]> {
+    if (studentIds.length === 0) {
+      return [];
+    }
+
+    return await db
+      .select()
+      .from(dismissals)
+      .where(
+        and(
+          inArray(dismissals.studentId, studentIds),
+          // Only show dismissals that haven't been confirmed by parent yet
+          // or were created today (for historical view)
+          or(
+            isNull(dismissals.confirmedByParentAt),
+            gte(dismissals.createdAt, new Date(new Date().setHours(0, 0, 0, 0)))
+          )
+        )
+      )
+      .orderBy(desc(dismissals.createdAt));
   }
 
   async createDismissal(insertDismissal: InsertDismissal): Promise<Dismissal> {

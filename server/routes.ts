@@ -214,6 +214,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete a dismissal (mark as picked up) - accessible to both teachers and admins
+  app.patch("/api/teacher/dismissals/:id/complete", isAuthenticated, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+
+      // Get the dismissal to verify permissions
+      const dismissal = await storage.getDismissalById(id);
+      if (!dismissal) {
+        return res.status(404).json({ message: "Dismissal not found" });
+      }
+
+      // Verify the dismissal belongs to the user's organization
+      if (dismissal.organizationId !== req.user.organizationId) {
+        return res.status(403).json({ message: "Access denied to this dismissal" });
+      }
+
+      // For teachers, verify they have access to this student's class
+      if (req.user.role === "teacher") {
+        const teacherClasses = await storage.getTeacherClassAssignments(req.user.id);
+        const dismissalDetails = await storage.getDismissalsForTeacherClasses(req.user.id);
+        const hasAccess = dismissalDetails.some(d => d.id === id);
+
+        if (!hasAccess) {
+          return res.status(403).json({ message: "You don't have access to this dismissal" });
+        }
+      }
+
+      // Update dismissal to completed
+      const updatedDismissal = await storage.updateDismissal(id, {
+        status: "completed",
+        completedAt: new Date(),
+      });
+
+      // Notify via WebSocket
+      wsManager.notifyDismissalCompleted(id);
+
+      res.json(updatedDismissal);
+    } catch (error) {
+      console.error('Error completing dismissal:', error);
+      res.status(500).json({ message: "Failed to complete dismissal" });
+    }
+  });
+
   // Public classes endpoint - accessible to authenticated users for form dropdowns
   // Returns classes filtered by the user's organization
   app.get("/api/classes", isAuthenticated, async (req, res) => {
@@ -529,6 +576,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error creating pick-up request:', error);
       res.status(500).json({ message: "Failed to create pick-up request" });
+    }
+  });
+
+  // Get active dismissals for parent's students
+  app.get("/api/parent/dismissals", isAuthenticated, hasRole("parent"), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Get all students for this parent
+      const students = await storage.getStudentsByParentId(req.user.id);
+      const studentIds = students.map(s => s.id);
+
+      if (studentIds.length === 0) {
+        return res.json([]);
+      }
+
+      // Get all dismissals for these students (not completed or still in progress)
+      const dismissals = await storage.getDismissalsByStudents(studentIds);
+
+      res.json(dismissals);
+    } catch (error) {
+      console.error('Error fetching parent dismissals:', error);
+      res.status(500).json({ message: "Failed to fetch dismissals" });
+    }
+  });
+
+  // Parent confirms receiving child
+  app.patch("/api/parent/dismissals/:id/confirm", isAuthenticated, hasRole("parent"), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+
+      // Get the dismissal to verify permissions
+      const dismissal = await storage.getDismissalById(id);
+      if (!dismissal) {
+        return res.status(404).json({ message: "Dismissal not found" });
+      }
+
+      // Verify this dismissal belongs to the parent
+      if (dismissal.parentId !== req.user.id) {
+        return res.status(403).json({ message: "You can only confirm your own child's pickup" });
+      }
+
+      // Verify dismissal has been completed by teacher
+      if (!dismissal.completedAt) {
+        return res.status(400).json({ message: "Cannot confirm - teacher hasn't released the student yet" });
+      }
+
+      // Update dismissal with parent confirmation
+      const updatedDismissal = await storage.updateDismissal(id, {
+        confirmedByParentAt: new Date(),
+      });
+
+      // Notify via WebSocket (optional - for real-time updates)
+      wsManager.notifyDismissalCompleted(id);
+
+      res.json(updatedDismissal);
+    } catch (error) {
+      console.error('Error confirming pickup:', error);
+      res.status(500).json({ message: "Failed to confirm pickup" });
     }
   });
 

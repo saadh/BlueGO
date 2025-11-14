@@ -140,6 +140,30 @@ export default function ClassroomDisplay() {
     });
   };
 
+  const completeDismissalMutation = useMutation({
+    mutationFn: async (dismissalId: string) => {
+      await apiRequest("PATCH", `/api/teacher/dismissals/${dismissalId}/complete`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/dismissals"] });
+      toast({
+        title: "Student Picked Up!",
+        description: "Dismissal marked as completed",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to complete dismissal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCompleteDismissal = (dismissalId: string) => {
+    completeDismissalMutation.mutate(dismissalId);
+  };
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/logout");
@@ -384,6 +408,7 @@ export default function ClassroomDisplay() {
               {activeCalls.map((call, index) => (
                 <AnimatedDismissalCard
                   key={call.id}
+                  dismissalId={call.id}
                   studentName={call.studentName}
                   avatarUrl={call.studentAvatarUrl}
                   grade={call.grade}
@@ -394,6 +419,7 @@ export default function ClassroomDisplay() {
                   isNew={call.isNew}
                   isCompleted={call.isCompleted}
                   index={index}
+                  onComplete={handleCompleteDismissal}
                 />
               ))}
             </div>
@@ -407,6 +433,7 @@ export default function ClassroomDisplay() {
               {completedCalls.map((call, index) => (
                 <AnimatedDismissalCard
                   key={call.id}
+                  dismissalId={call.id}
                   studentName={call.studentName}
                   avatarUrl={call.studentAvatarUrl}
                   grade={call.grade}

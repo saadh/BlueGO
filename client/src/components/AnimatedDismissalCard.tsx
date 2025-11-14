@@ -4,9 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, CheckCircle, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getRandomCelebrationGif, getAvatarUrl } from "@/lib/avatars";
 
 interface AnimatedDismissalCardProps {
+  dismissalId: string;
   studentName: string;
   grade: string;
   class: string;
@@ -17,9 +19,11 @@ interface AnimatedDismissalCardProps {
   isNew?: boolean;
   isCompleted?: boolean;
   index?: number;
+  onComplete?: (dismissalId: string) => void;
 }
 
 export default function AnimatedDismissalCard({
+  dismissalId,
   studentName,
   grade,
   class: className,
@@ -29,7 +33,8 @@ export default function AnimatedDismissalCard({
   avatarUrl,
   isNew,
   isCompleted,
-  index = 0
+  index = 0,
+  onComplete
 }: AnimatedDismissalCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [celebrationGif, setCelebrationGif] = useState<string>("");
@@ -175,6 +180,26 @@ export default function AnimatedDismissalCard({
                     </Badge>
                     <span className="text-xs text-muted-foreground" data-testid="text-time">{time}</span>
                   </div>
+
+                  {/* Complete button - only show for active dismissals */}
+                  {!isCompleted && onComplete && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="mt-3"
+                    >
+                      <Button
+                        onClick={() => onComplete(dismissalId)}
+                        className="w-full bg-[#00C851] hover:bg-[#00A844] text-white"
+                        size="sm"
+                        data-testid={`button-complete-${studentName.replace(/\s+/g, '-').toLowerCase()}`}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Mark as Picked Up
+                      </Button>
+                    </motion.div>
+                  )}
                 </div>
               </div>
             </CardContent>
