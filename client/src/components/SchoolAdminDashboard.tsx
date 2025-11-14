@@ -198,6 +198,9 @@ export default function SchoolAdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      // Invalidate all teacher-classes queries to update assigned classes in Users tab
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/teacher-classes"] });
       setAddClassOpen(false);
       toast({
         title: "Success",
@@ -253,6 +256,9 @@ export default function SchoolAdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      // Invalidate all teacher-classes queries to update assigned classes in Users tab
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/teacher-classes"] });
       setEditClassOpen(false);
       toast({
         title: "Success",

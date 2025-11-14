@@ -104,8 +104,8 @@ export type UserRole = typeof userRoles[number];
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id").references(() => organizations.id, { onDelete: "cascade" }), // null for superadmin
-  email: text("email").unique(),
-  phone: text("phone").unique(),
+  email: text("email"), // Removed unique constraint to support multi-org parents
+  phone: text("phone"), // Removed unique constraint to support multi-org parents
   password: text("password").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -125,6 +125,8 @@ export const users = pgTable("users", {
   phoneIdx: index("phone_idx").on(table.phone),
   organizationIdx: index("user_organization_idx").on(table.organizationId),
   roleIdx: index("user_role_idx").on(table.role),
+  // Composite unique constraint: same email can't exist twice in same organization
+  emailOrgUnique: uniqueIndex("email_org_unique").on(table.email, table.organizationId),
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({

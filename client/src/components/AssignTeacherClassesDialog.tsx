@@ -53,6 +53,8 @@ export default function AssignTeacherClassesDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/teacher-classes", teacherId] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      // Invalidate classes query to update teacher name in Classes tab
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
     },
     onError: (error: any) => {
       toast({
@@ -70,6 +72,8 @@ export default function AssignTeacherClassesDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/teacher-classes", teacherId] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      // Invalidate classes query to update teacher name in Classes tab
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/classes"] });
     },
     onError: () => {
       toast({
