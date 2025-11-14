@@ -200,15 +200,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Parent routes
 
-  // Get organizations where parent is registered (by email)
+  // Get organizations where parent is registered (by email or phone)
   app.get("/api/parent/organizations", isAuthenticated, hasRole("parent"), async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Find all user records with the same email across different organizations
-      const parentAccounts = await storage.getUsersByEmail(req.user.email!);
+      // Find all user records with the same email or phone across different organizations
+      let parentAccounts: User[] = [];
+
+      if (req.user.email) {
+        parentAccounts = await storage.getUsersByEmail(req.user.email);
+      } else if (req.user.phone) {
+        parentAccounts = await storage.getUsersByPhone(req.user.phone);
+      } else {
+        return res.status(400).json({ message: "User must have email or phone" });
+      }
 
       // Extract unique organization IDs
       const orgIds = [...new Set(parentAccounts.map(acc => acc.organizationId).filter(id => id))];
@@ -241,7 +249,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { organizationId } = req.params;
 
       // Verify parent has access to this organization (is registered there)
-      const parentAccount = await storage.getUserByEmailAndOrganization(req.user.email!, organizationId);
+      let parentAccount: User | undefined;
+      if (req.user.email) {
+        parentAccount = await storage.getUserByEmailAndOrganization(req.user.email, organizationId);
+      } else if (req.user.phone) {
+        parentAccount = await storage.getUserByPhoneAndOrganization(req.user.phone, organizationId);
+      }
+
       if (!parentAccount) {
         return res.status(403).json({ message: "You are not registered in this organization" });
       }
@@ -536,16 +550,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Admin must belong to an organization" });
       }
 
-      // For parents: check if user with this email already exists
-      if (validation.data.role === "parent" && validation.data.email) {
-        const existingUsers = await storage.getUsersByEmail(validation.data.email);
+      // For parents: check if user with this email or phone already exists
+      if (validation.data.role === "parent") {
+        let existingUsers: User[] = [];
+
+        if (validation.data.email) {
+          existingUsers = await storage.getUsersByEmail(validation.data.email);
+        } else if (validation.data.phone) {
+          existingUsers = await storage.getUsersByPhone(validation.data.phone);
+        }
 
         if (existingUsers.length > 0) {
           // Check if any existing user is not a parent
           const nonParentUser = existingUsers.find(u => u.role !== "parent");
           if (nonParentUser) {
+            const identifier = validation.data.email ? "email" : "phone";
             return res.status(400).json({
-              message: `This email is already registered as a ${nonParentUser.role}. Cannot add as parent.`
+              message: `This ${identifier} is already registered as a ${nonParentUser.role}. Cannot add as parent.`
             });
           }
 

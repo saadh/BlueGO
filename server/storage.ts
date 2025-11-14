@@ -148,6 +148,28 @@ export class DbStorage implements IStorage {
     return user;
   }
 
+  // Get all user accounts with the same phone (across different organizations)
+  async getUsersByPhone(phone: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.phone, phone));
+  }
+
+  // Get user by phone and organization ID
+  async getUserByPhoneAndOrganization(phone: string, organizationId: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.phone, phone),
+          eq(users.organizationId, organizationId)
+        )
+      );
+    return user;
+  }
+
   // Student operations
   async getStudentsByParentId(parentId: string): Promise<Student[]> {
     return await db.select().from(students).where(eq(students.parentId, parentId));
