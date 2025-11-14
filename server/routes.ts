@@ -345,6 +345,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Request pick-up for a student (parent-initiated, no NFC card needed)
+  app.post("/api/parent/request-pickup", isAuthenticated, hasRole("parent"), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { studentId } = req.body;
+
+      if (!studentId || typeof studentId !== 'string') {
+        return res.status(400).json({ message: "Student ID is required" });
+      }
+
+      // Verify the student belongs to the authenticated parent
+      const student = await storage.getStudentById(studentId);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+      if (student.parentId !== req.user.id) {
+        return res.status(403).json({ message: "You can only request pick-up for your own children" });
+      }
+
+      // Create dismissal request (similar to NFC scan but without gate/security info)
+      const dismissal = await storage.createDismissal({
+        studentId: student.id,
+        parentId: req.user.id,
+        organizationId: req.user.organizationId!,
+        gateId: null, // Parent is requesting from app, not at a gate
+        scannedByUserId: null, // No security staff involved
+        status: "called", // Set to called to trigger classroom display immediately
+        calledAt: new Date(),
+      });
+
+      // Notify via WebSocket about new dismissal (same as NFC scan)
+      wsManager.notifyDismissalCreated({
+        id: dismissal.id,
+        studentId: student.id,
+        studentName: student.name,
+        studentAvatarUrl: student.avatarUrl,
+        studentGrade: student.grade,
+        studentClass: student.class,
+        parentId: req.user.id,
+        parentFirstName: req.user.firstName,
+        parentLastName: req.user.lastName,
+        gateName: "App Request", // Indicate this was requested via app
+        status: dismissal.status,
+        calledAt: dismissal.calledAt,
+      });
+
+      res.status(201).json({
+        message: "Pick-up request created successfully",
+        dismissal: {
+          id: dismissal.id,
+          studentId: student.id,
+          studentName: student.name,
+          status: dismissal.status,
+        },
+      });
+    } catch (error) {
+      console.error('Error creating pick-up request:', error);
+      res.status(500).json({ message: "Failed to create pick-up request" });
+    }
+  });
+
   // Delete a student
   app.delete("/api/students/:id", isAuthenticated, hasRole("parent"), async (req, res) => {
     try {
