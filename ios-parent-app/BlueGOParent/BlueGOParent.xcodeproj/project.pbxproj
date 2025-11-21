@@ -1,0 +1,287 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BlueGOParentApp.swift in Sources = {isa = PBXBuildFile; };
+		ContentView.swift in Sources = {isa = PBXBuildFile; };
+		User.swift in Sources = {isa = PBXBuildFile; };
+		Student.swift in Sources = {isa = PBXBuildFile; };
+		Dismissal.swift in Sources = {isa = PBXBuildFile; };
+		Organization.swift in Sources = {isa = PBXBuildFile; };
+		NetworkService.swift in Sources = {isa = PBXBuildFile; };
+		AuthService.swift in Sources = {isa = PBXBuildFile; };
+		ParentService.swift in Sources = {isa = PBXBuildFile; };
+		AuthViewModel.swift in Sources = {isa = PBXBuildFile; };
+		ParentViewModel.swift in Sources = {isa = PBXBuildFile; };
+		AuthView.swift in Sources = {isa = PBXBuildFile; };
+		ParentDashboardView.swift in Sources = {isa = PBXBuildFile; };
+		StudentCardView.swift in Sources = {isa = PBXBuildFile; };
+		AddStudentView.swift in Sources = {isa = PBXBuildFile; };
+		NFCLinkingView.swift in Sources = {isa = PBXBuildFile; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		BlueGOParent.app = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlueGOParent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FrameworksBuildPhase = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		RootGroup = {
+			isa = PBXGroup;
+			children = (
+				BlueGOParent,
+				Products,
+			);
+			sourceTree = "<group>";
+		};
+		Products = {
+			isa = PBXGroup;
+			children = (
+				BlueGOParent.app,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BlueGOParent = {
+			isa = PBXGroup;
+			children = (
+				BlueGOParentApp.swift,
+				ContentView.swift,
+				Models,
+				Services,
+				ViewModels,
+				Views,
+			);
+			path = BlueGOParent;
+			sourceTree = "<group>";
+		};
+		Models = {
+			isa = PBXGroup;
+			children = (
+				User.swift,
+				Student.swift,
+				Dismissal.swift,
+				Organization.swift,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		Services = {
+			isa = PBXGroup;
+			children = (
+				NetworkService.swift,
+				AuthService.swift,
+				ParentService.swift,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		ViewModels = {
+			isa = PBXGroup;
+			children = (
+				AuthViewModel.swift,
+				ParentViewModel.swift,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		Views = {
+			isa = PBXGroup;
+			children = (
+				AuthView.swift,
+				ParentDashboardView.swift,
+				StudentCardView.swift,
+				AddStudentView.swift,
+				NFCLinkingView.swift,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BlueGOParent = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BuildConfigurationList;
+			buildPhases = (
+				SourcesBuildPhase,
+				FrameworksBuildPhase,
+				ResourcesBuildPhase,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BlueGOParent;
+			productName = BlueGOParent;
+			productReference = BlueGOParent.app;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		Project = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = ProjectBuildConfigurationList;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = RootGroup;
+			productRefGroup = Products;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BlueGOParent,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		ResourcesBuildPhase = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		SourcesBuildPhase = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BlueGOParentApp.swift in Sources,
+				ContentView.swift in Sources,
+				User.swift in Sources,
+				Student.swift in Sources,
+				Dismissal.swift in Sources,
+				Organization.swift in Sources,
+				NetworkService.swift in Sources,
+				AuthService.swift in Sources,
+				ParentService.swift in Sources,
+				AuthViewModel.swift in Sources,
+				ParentViewModel.swift in Sources,
+				AuthView.swift in Sources,
+				ParentDashboardView.swift in Sources,
+				StudentCardView.swift in Sources,
+				AddStudentView.swift in Sources,
+				NFCLinkingView.swift in Sources,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		DebugConfig = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_NFCReaderUsageDescription = "This app needs access to NFC to link your card for automatic student check-in";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bluego.parent;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		ReleaseConfig = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_NFCReaderUsageDescription = "This app needs access to NFC to link your card for automatic student check-in";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bluego.parent;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BuildConfigurationList = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DebugConfig,
+				ReleaseConfig,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ProjectBuildConfigurationList = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DebugConfig,
+				ReleaseConfig,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = Project;
+}
